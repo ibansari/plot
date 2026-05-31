@@ -22,12 +22,15 @@ import { McpRenderService } from "./mcp/mcp-render.service";
 import { McpStdioExecutor } from "./mcp/mcp-stdio.executor";
 import { McpConnectionService } from "./mcp/mcp-connection.service";
 import { McpController } from "./mcp/mcp.controller";
+// Weather (Slice 3)
+import { WeatherKitProvider } from "./weather/weatherkit.provider";
 
 @Module({
   controllers: [IntegrationsController, MapsController, McpController],
   providers: [
     IntegrationsService,
     MapsService,
+    WeatherKitProvider,
     McpGatewayService,
     McpRenderService,
     McpConnectionService,

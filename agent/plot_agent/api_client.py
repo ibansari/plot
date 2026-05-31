@@ -79,6 +79,10 @@ class ApiClient:
                 json={"groupId": group_id, "query": query, "planId": plan_id, "near": near},
             ).raise_for_status().json()
 
+    def weather_check(self, near: str, when: str | None = None) -> dict:
+        with self._client() as c:
+            return c.post("/internal/weather", json={"near": near, "when": when}).raise_for_status().json()
+
     def create_split(self, plan_id: str, per_head_cents: int, memo: str | None = None) -> dict:
         with self._client() as c:
             return c.post(

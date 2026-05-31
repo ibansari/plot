@@ -13,6 +13,7 @@ from plot_agent.mcp_bridge import register_mcp_tools
 
 
 class FakeApi:
+    def weather_check(self, **k): return {"status": "DEGRADED", "summary": "n/a"}
     def maps_feasibility(self, **k): return {"status": "DEGRADED", "candidates": []}
     def get_plan(self, **k):
         return {}

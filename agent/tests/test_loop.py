@@ -63,6 +63,7 @@ class LoopApi:
         self.messages.append(body)
         return {"id": "m"}
 
+    def weather_check(self, **k): return {"status": "DEGRADED", "summary": "n/a"}
     def maps_feasibility(self, **k): return {"status": "DEGRADED", "candidates": []}
     def get_plan(self, **k):
         return {"state": "VOTING", "options": [], "votes": []}

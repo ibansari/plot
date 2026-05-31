@@ -38,6 +38,7 @@ class RememberApi:
     def invite_non_user(self, **k): return {}
     def lock(self, **k): return {}
     def create_split(self, **k): return {"created": True, "split": {"perHeadCents": 0}}
+    def weather_check(self, **k): return {"status": "DEGRADED", "summary": "n/a"}
     def maps_feasibility(self, **k): return {"status": "DEGRADED", "candidates": []}
     def get_plan(self, **k): return {}
 

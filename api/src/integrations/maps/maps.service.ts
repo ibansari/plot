@@ -1,8 +1,9 @@
-import { Inject, Injectable, Logger } from "@nestjs/common";
+import { Inject, Injectable, Logger, Optional } from "@nestjs/common";
 import { PrismaService } from "../../common/prisma.service";
 import { decryptJson } from "../../common/crypto.util";
 import { config } from "../../common/config";
 import { scoreCandidates } from "./fairness";
+import { WeatherKitProvider } from "../weather/weatherkit.provider";
 import {
   CandidateVenue,
   LatLng,
@@ -35,10 +36,21 @@ export class MapsService {
     private readonly prisma: PrismaService,
     @Inject(NATIVE_PLACES_PROVIDER) private readonly places: PlacesProviderNative,
     @Inject(ROUTES_PROVIDER) private readonly routes: RoutesProvider,
+    @Optional() private readonly weather?: WeatherKitProvider,
   ) {}
 
   searchVenues(query: string, area?: { near?: string; location?: LatLng; radiusMeters?: number }) {
     return this.places.search(query, area);
+  }
+
+  // Weather for an area/time (Slice 3): geocode the area via Places, then forecast. Powers the
+  // outdoor-plan fallback — the agent can move a plan indoors when severe weather is flagged (§C4).
+  async weatherForArea(near: string, whenIso?: string) {
+    if (!this.weather) return { status: "DEGRADED", summary: "weather unavailable", attribution: [] };
+    const hits = await this.places.search(near, { near });
+    const loc = hits[0]?.location;
+    if (!loc) return { status: "DEGRADED", summary: `couldn't locate "${near}"`, attribution: [] };
+    return this.weather.forecast(loc.lat, loc.lng, whenIso);
   }
 
   // Load every member's PRIVATE origin for a group (applying an active per-plan override), decrypt

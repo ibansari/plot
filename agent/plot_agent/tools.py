@@ -109,6 +109,15 @@ class ToolRegistry:
             loop=True, proactive=True,
         ))
         self.register(Tool(
+            "weather_check", "", False, False, self.api.weather_check,
+            description="Check the forecast + severe-weather warnings for an area/time. Call before proposing an OUTDOOR plan (picnic, hike, rooftop) so you can warn the group or fall back indoors.",
+            input_schema={"type": "object", "properties": {
+                "near": {"type": "string", "description": "area, e.g. 'Prospect Park' or 'Catskills NY'"},
+                "when": {"type": "string", "description": "optional ISO time"},
+            }, "required": ["near"]},
+            loop=True, proactive=True,
+        ))
+        self.register(Tool(
             "get_plan", "", False, False, self.api.get_plan,
             description="Read a plan's current options, votes, and state. Call before refining or to check where a decision stands.",
             input_schema={"type": "object", "properties": {"plan_id": {"type": "string"}}, "required": ["plan_id"]},

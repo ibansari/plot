@@ -134,6 +134,8 @@ class AgentLoop:
                 "maps_feasibility", group_id=ctx["groupId"], query=args.get("query", ""),
                 near=args.get("near"), plan_id=state.get("plan_id"),
             )
+        if name == "weather_check":
+            return self.tools.invoke("weather_check", near=args.get("near", ""), when=args.get("when"))
         if name == "get_plan":
             return self.tools.invoke("get_plan", plan_id=args.get("plan_id"))
         if name == "post_message":

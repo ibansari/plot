@@ -21,6 +21,12 @@ export class MapsController {
     return this.maps.feasibility(b);
   }
 
+  // ── weather for an area/time (outdoor-plan fallback, §C4) ──
+  @Post("internal/weather")
+  weather(@Body() b: { near: string; when?: string }) {
+    return this.maps.weatherForArea(b.near, b.when);
+  }
+
   // ── member saves a private starting area + travel guardrails (coords encrypted at rest) ──
   @Post("me/travel-preference")
   async saveTravelPreference(
