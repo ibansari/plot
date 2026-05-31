@@ -89,11 +89,45 @@ class AgentNodes:
             return "loop"
         if decision == "STAY_QUIET":
             return "quiet"
-        if decision == "ACT" and not self._is_explicit_command(state):
-            return "suggest"
-        return "loop"
+        # Only OFFER ("suggest") for genuinely fresh planning intent. If the group is replying to an
+        # open suggestion, refining a live plan, or asking a question, go straight to the loop so Plot
+        # drafts/answers instead of re-posting the same "want me to draft?" nudge (the suggestion loop).
+        cmd, sug, plan, q = (self._is_explicit_command(state), self._has_open_suggestion(state),
+                             self._has_live_plan(state), self._latest_is_question(state))
+        route = "suggest" if (decision == "ACT" and not cmd and not sug and not plan and not q) else "loop"
+        import logging
+        logging.getLogger("plot-agent").info(
+            "route: decision=%s command=%s open_suggestion=%s live_plan=%s question=%s → %s",
+            decision, cmd, sug, plan, q, route)
+        return route
+
+    # ── context helpers (use message kind/metadata surfaced by the API) ──
+    def _recent_human(self, state: dict) -> dict | None:
+        msgs = (state.get("context") or {}).get("messages") or []
+        human = [m for m in msgs if not m.get("isAgent")]
+        return human[-1] if human else None
+
+    def _has_open_suggestion(self, state: dict) -> bool:
+        # the latest agent message is an unhandled Plot suggestion → the user is responding to it
+        msgs = (state.get("context") or {}).get("messages") or []
+        last_agent = next((m for m in reversed(msgs) if m.get("isAgent")), None)
+        meta = (last_agent or {}).get("metadata") or {}
+        return meta.get("kind") == "plot_suggestion" and meta.get("status", "open") == "open"
+
+    def _has_live_plan(self, state: dict) -> bool:
+        # a decision card already exists in the recent thread → refine/answer, don't re-suggest
+        msgs = (state.get("context") or {}).get("messages") or []
+        return any(m.get("kind") == "DECISION_CARD" for m in msgs[-10:])
+
+    def _latest_is_question(self, state: dict) -> bool:
+        m = self._recent_human(state)
+        return bool(m and "?" in (m.get("body") or ""))
 
     def suggest_plan(self, state: dict) -> dict:
+        # never stack suggestions — if one is already open, stay quiet (the router usually prevents
+        # reaching here, but this guards against rapid repeat messages).
+        if self._has_open_suggestion(state):
+            return {"result": "NOOP", "decision": "STAY_QUIET"}
         intent = state.get("intent") or {}
         activity = intent.get("activity") or "a plan"
         time_hint = intent.get("time_hint")

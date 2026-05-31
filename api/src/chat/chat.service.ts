@@ -108,6 +108,8 @@ export class ChatService {
         body: m.body,
         authorName: m.author?.displayName ?? (m.kind === "AGENT" ? "Plot" : undefined),
         isAgent: m.kind === MessageKind.AGENT || m.kind === MessageKind.DECISION_CARD,
+        // surfaced so the agent can see an open Plot suggestion / decision card and avoid re-suggesting
+        metadata: (m.metadata as object) ?? undefined,
         createdAt: m.createdAt.toISOString(),
       })),
     };

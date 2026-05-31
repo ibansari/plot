@@ -24,8 +24,9 @@ from .constraints import active_constraints
 from . import config
 
 MAX_STEPS = 8
-# per-run ceilings on mutating tools — a runaway loop can't spam proposals
-CEILINGS = {"propose_plan": 4}
+# per-run ceilings on mutating tools — one decision card per turn (no duplicate proposals); a
+# follow-up message can refine or add the next trip segment.
+CEILINGS = {"propose_plan": 1}
 
 
 def _now() -> datetime:
@@ -112,10 +113,20 @@ class AgentLoop:
         if intent:
             hint = (f"\nQuick first read (you may override): decision={intent.get('decision')}, "
                     f"activity={intent.get('activity')}, time={intent.get('time_hint')}.")
+        # if a decision card is already open, tell Claude NOT to create a duplicate — answer/refine
+        open_card = next((m for m in reversed(ctx.get("messages", [])) if m.get("kind") == "DECISION_CARD"), None)
+        card_note = ""
+        if open_card:
+            card_note = (
+                f"\n\nA decision card is ALREADY OPEN for this group: \"{(open_card.get('body') or '')[:120]}\". "
+                "Do NOT call propose_plan again — that would post a duplicate. Instead answer the latest "
+                "message directly with post_message (e.g. read the plan or report travel times), or if a real "
+                "change is needed say so. Only propose a NEW card for a genuinely different plan."
+            )
         return (
             f"Current time: {_now().isoformat()}\n"
             f"Group: {mem}\n"
-            f"Known constraints (apply silently):\n{con_lines}{hint}\n\n"
+            f"Known constraints (apply silently):\n{con_lines}{hint}{card_note}\n\n"
             f"Recent thread (oldest → newest):\n{transcript}\n\n"
             f"Decide what, if anything, to do for the group right now. Call tools as needed, then finish_turn."
         )

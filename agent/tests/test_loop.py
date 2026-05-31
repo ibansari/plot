@@ -46,6 +46,7 @@ class LoopApi:
 
     def propose(self, payload):
         self.proposed = payload
+        self.propose_count = getattr(self, "propose_count", 0) + 1
         return {"id": "p_loop", "state": "VOTING", "options": payload["options"]}
 
     def gather_availability(self, **k):
@@ -137,3 +138,15 @@ def test_no_llm_falls_back_to_deterministic_propose():
     # deterministic gather → research → propose still produces a plan, fully gated
     assert api.proposed is not None
     assert len(api.proposed["options"]) >= 2
+
+
+def test_propose_capped_at_one_card_per_turn():
+    api = LoopApi()
+    opt = [{"kind": "COMBO", "label": "7p @ X", "place": "X"}, {"kind": "ACTIVITY", "label": "casual"}]
+    brain = Brain(loop_caller=ScriptedCaller([
+        resp([tu("propose_plan", title="Dinner", method="boost_veto", summary="✦ one", options=opt)]),
+        resp([tu("propose_plan", title="Dinner again", method="boost_veto", summary="✦ two", options=opt)]),
+        resp([tu("finish_turn", reason="done")]),
+    ]))
+    AgentNodes(api=api, brain=brain).agent_loop(_state())
+    assert api.propose_count == 1  # the 2nd propose is blocked by the per-turn ceiling
