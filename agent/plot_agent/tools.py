@@ -25,6 +25,12 @@ class Tool:
     irreversible: bool   # irreversible tools always route to human-approval
     spends: bool         # whether this tool spends money (cap-gated)
     run: Callable[..., Any]
+    # ── agentic-loop exposure (Claude tool use) ──
+    description: str = ""           # WHEN to call it (prescriptive — drives Claude's choice)
+    input_schema: dict | None = None  # JSON schema of the args Claude provides (context is injected by the loop)
+    loop: bool = False              # offered to the agentic message-loop
+    proactive: bool = False         # also offered on an uninvited (proactive) turn — read/speak only
+    external: bool = False          # an MCP-server tool: the loop dispatches its args straight through invoke()
 
 
 class ToolRegistry:
@@ -60,19 +66,89 @@ class ToolRegistry:
             pass
         return tool.run(**kwargs)
 
+    # tools Claude can call inside the agentic loop, in Anthropic tool-use format.
+    # On a proactive (uninvited) turn, only read/speak tools are offered — mutating tools are
+    # physically withheld from the schema, so an uninvited turn can suggest but never commit.
+    def tool_schemas(self, trigger: str = "message") -> list[dict]:
+        out = []
+        for t in self._tools.values():
+            if not t.loop:
+                continue
+            if trigger == "proactive" and not t.proactive:
+                continue
+            out.append({"name": t.name, "description": t.description, "input_schema": t.input_schema or {"type": "object", "properties": {}}})
+        return out
+
     def _register_defaults(self):
-        self.register(Tool("gather_availability", "CALENDAR_BUSYFREE", False, False, self.api.gather_availability))
-        self.register(Tool("research_places", "PLACES_SEARCH", False, False, self.api.research_places))
-        self.register(Tool("propose_plan", "", False, False, self.api.propose))
+        # ── availability / research (read; permission-gated server-side, degrade to empty) ──
+        self.register(Tool(
+            "gather_availability", "CALENDAR_BUSYFREE", False, False, self.api.gather_availability,
+            description="Find when the group is free. Call this when a plan needs a time and you don't have one yet. YOU choose the window (tonight 6–11pm, this Friday evening, a full Saturday for a trip day).",
+            input_schema={"type": "object", "properties": {
+                "from_iso": {"type": "string", "description": "window start, ISO-8601"},
+                "to_iso": {"type": "string", "description": "window end, ISO-8601"},
+            }, "required": ["from_iso", "to_iso"]},
+            loop=True, proactive=True,
+        ))
+        self.register(Tool(
+            "research_places", "PLACES_SEARCH", False, False, self.api.research_places,
+            description="Search real venues/activities. Call once per kind of place you need (e.g. 'sushi', or 'lodging big sur' then 'hiking trail'). Returns name, price tier, address.",
+            input_schema={"type": "object", "properties": {
+                "query": {"type": "string", "description": "what to search, e.g. 'sushi', 'rooftop bar', 'bowling'"},
+                "near": {"type": "string", "description": "optional area"},
+            }, "required": ["query"]},
+            loop=True, proactive=True,
+        ))
+        self.register(Tool(
+            "get_plan", "", False, False, self.api.get_plan,
+            description="Read a plan's current options, votes, and state. Call before refining or to check where a decision stands.",
+            input_schema={"type": "object", "properties": {"plan_id": {"type": "string"}}, "required": ["plan_id"]},
+            loop=True, proactive=True,
+        ))
+        # ── propose a decision (reversible draft; the group explicitly opens voting) ──
+        self.register(Tool(
+            "propose_plan", "", False, False, self.api.propose,
+            description="Draft a concrete decision card with 2–4 options for the group to review before voting. Use after you know roughly when + what. Write a friendly card 'summary' (start with ✦) that leads with your top pick and references the group's constraints, and a 'why' on each option.",
+            input_schema={"type": "object", "properties": {
+                "title": {"type": "string"},
+                "method": {"type": "string", "enum": ["boost_veto", "ranked"]},
+                "summary": {"type": "string", "description": "the decision-card body; starts with ✦"},
+                "options": {"type": "array", "items": {"type": "object", "properties": {
+                    "kind": {"type": "string", "enum": ["COMBO", "TIME", "PLACE", "ACTIVITY"]},
+                    "label": {"type": "string"},
+                    "place": {"type": "string"},
+                    "priceTier": {"type": "integer"},
+                    "startsAt": {"type": "string"},
+                    "endsAt": {"type": "string"},
+                    "why": {"type": "string", "description": "why it fits THIS group, referencing a constraint when one applies"},
+                    "fitFlags": {"type": "array", "items": {"type": "string"}},
+                }, "required": ["kind", "label"]}},
+            }, "required": ["title", "method", "summary", "options"]},
+            loop=True,
+        ))
+        # ── speech: the only casual channel (clarifying Qs, callouts). Calling it 0 times = silence ──
+        self.register(Tool(
+            "post_message", "", False, False, self.api.post_agent_message,
+            description="Say something in the thread — a single clarifying question when intent is unclear, a heads-up about a constraint conflict, or a nudge. This is the ONLY way you speak. Keep it short and warm; don't narrate.",
+            input_schema={"type": "object", "properties": {
+                "body": {"type": "string"},
+                "plan_id": {"type": "string"},
+            }, "required": ["body"]},
+            loop=True, proactive=True,
+        ))
+        # ── control: end the turn (default silence is a first-class clean stop) ──
+        self.register(Tool(
+            "finish_turn", "", False, False, lambda **_kw: {"ok": True},
+            description="End your turn. Call this when you've done everything useful for now — including when the right move is to stay silent (banter, settled logistics, nothing to add).",
+            input_schema={"type": "object", "properties": {"reason": {"type": "string"}}},
+            loop=True, proactive=True,
+        ))
+        # ── deadline/money path tools (NOT offered to the loop; used by the Inngest deadline chain) ──
         self.register(Tool("invite_non_user", "SEND_NONUSER_INVITE", False, False, self.api.invite_non_user))
         self.register(Tool("lock_plan", "", False, False, self.api.lock))
-        self.register(Tool("post_message", "", False, False, self.api.post_agent_message))
-        # auto-split (§B1): collecting shares is REVERSIBLE (refund) and not an over-cap spend, so
-        # the registry doesn't gate it — the API enforces the SPEND_MONEY grant (default-deny).
         self.register(Tool("create_split", "SPEND_MONEY", False, False, self.api.create_split))
-        # remembering a constraint is reversible memory, not a world action — no gate.
         self.register(Tool("remember_constraint", "", False, False, self.api.remember_constraint))
-        # booking is irreversible → always routes to human-approval (scaffolded, not used in slice)
+        # booking is irreversible → always routes to human-approval (scaffolded)
         self.register(Tool("book_venue", "BOOK_VENUE", True, False, lambda **_kw: None))
 
 
@@ -90,16 +166,12 @@ def build_decision_options(
     availability: dict,
     places: list[dict],
     activity: str | None,
-    constraints: list | None = None,
 ) -> list[dict]:
-    """Build MIXED options: time+place COMBOs, plus a time-only and an activity option so the card
-    offers genuinely different choices. Returns >=2 options for a valid vote.
+    """Assemble MIXED candidate options: time+place COMBOs, a time-only alternative, and an activity
+    option, so the card offers genuinely different choices. Returns >=2 options for a valid vote.
 
-    When `constraints` (a list of MemberConstraint) are supplied, each COMBO carries a "why it fits
-    this group" line + poor-fit flags (PRD §A2), places are ranked best-fit first, and a place a
-    member hard-dislikes is silently dropped when alternatives remain (PRD §A7)."""
-    from .constraints import evaluate_place
-
+    This is pure assembly. The "why it fits this group" rationale, poor-fit flags, and best-fit
+    ranking are reasoned by the LLM brain (see brain.reason_about_options / apply_reasoning)."""
     slots = availability.get("suggestions") or []
     # fallback slot if availability is empty: tomorrow 7:30pm for 90m
     if not slots:
@@ -107,28 +179,17 @@ def build_decision_options(
         s = base.replace(minute=30, second=0, microsecond=0) + timedelta(hours=1, minutes=30)
         slots = [{"startsAt": s.isoformat(), "endsAt": (s + timedelta(minutes=90)).isoformat(), "freeCount": 0}]
 
-    constraints = constraints or []
-    # score every place, rank best-fit first, then silently drop hard vetoes when alternatives exist
-    scored = [(p, evaluate_place(p, constraints)) for p in places]
-    scored.sort(key=lambda ps: ps[1]["fit"], reverse=True)
-    non_veto = [ps for ps in scored if not ps[1]["veto"]]
-    ranked = non_veto if len(non_veto) >= 1 else scored
-
     options: list[dict] = []
     top_slot = slots[0]
-    for place, fit in ranked[:2]:
-        opt = {
+    for place in places[:2]:
+        options.append({
             "kind": "COMBO",
             "label": f"{_fmt(_parse(top_slot['startsAt']))} @ {place['name']}",
             "startsAt": top_slot["startsAt"],
             "endsAt": top_slot["endsAt"],
             "place": place["name"],
             "priceTier": place.get("priceTier", 2),
-            "why": fit["why"],
-        }
-        if fit["flags"]:
-            opt["fitFlags"] = fit["flags"]
-        options.append(opt)
+        })
     # a second time slot as a time-only alternative
     if len(slots) > 1:
         alt = slots[1]

@@ -32,9 +32,12 @@ from it**.
   and **Jordan** as the non-user reached over SMS.
 - **OTP dev code** is `000000` (any phone). **Sign in with Apple** dev mock returns a canned
   identity. No Stytch keys required.
-- **Agent intelligence degrades deterministically**: with `ANTHROPIC_API_KEY` set, the LangGraph
-  graph uses Claude tool-use; with no key it falls back to a keyword/heuristic classifier so the
-  whole slice still runs offline with zero keys. Both paths traverse the *same* graph nodes.
+- **Claude is the agent's brain** (`agent/plot_agent/brain.py`): the LangGraph graph uses
+  `claude-opus-4-8` with structured outputs (`messages.parse` + Pydantic) for intent, constraint
+  extraction, and option reasoning — no regex/keyword classifier. Requires `ANTHROPIC_API_KEY`; with
+  no key (or on an API error) the brain returns conservative defaults (Plot stays quiet) rather than
+  acting on heuristics. The single SDK call sits behind an injectable seam, so the graph is
+  unit-tested offline with a fake brain.
 - **Soft deadline** for the demo is compressed to **45 seconds** (`PLOT_SOFT_DEADLINE_SECONDS`) so
   the auto-lock is observable in a sitting; production default would be hours.
 - The non-user "SMS" is **logged to stdout + persisted** and the signed link is served by `/web`.
@@ -131,7 +134,8 @@ plot/
 │       ├── graph.py              ← explicit LangGraph state machine
 │       ├── nodes.py              ← detect-intent, gather, research, propose, act-or-ask
 │       ├── tools.py              ← typed tool registry (permission+cap BEFORE, audit AFTER)
-│       ├── llm.py                ← Claude tool-use OR deterministic fallback
+│       ├── brain.py              ← Claude (claude-opus-4-8) structured-output reasoning brain
+│       ├── constraints.py        ← constraint-memory model + expiry
 │       └── api_client.py         ← talks back to NestJS
 ├── web/                          ← Next.js — signed non-user vote/RSVP pages
 │   ├── package.json · next.config.mjs
@@ -195,7 +199,7 @@ See **`docs/CLICKPATH.md`** for the exact tap-by-tap path through the app.
 | **Live Chats list / multi-group** | **REAL** (`GET /me/groups`; iOS is fully data-driven) | — |
 | Group chat + messages | **REAL** (Postgres, Socket.IO) | — |
 | Plan state machine §10 | **REAL** (enforced in `plan.service.ts` + tests) | — |
-| Agent graph §9 (intent → … → act/ask) | **REAL** LangGraph; Claude if key, else deterministic | swap `llm.py` impl |
+| Agent graph §9 (intent → … → act/ask) | **REAL** LangGraph; Claude (`claude-opus-4-8`) brain (`brain.py`) — requires key | tune prompts/model in `brain.py` |
 | Decision card w/ mixed options | **REAL** | — |
 | Voting (app users) | **REAL** | — |
 | **Non-user vote via SMS/web** | **REAL via mock** (SMS logged, link served by `/web`) | `TwilioComms` → real Twilio |
@@ -205,14 +209,48 @@ See **`docs/CLICKPATH.md`** for the exact tap-by-tap path through the app.
 | Calendar busy/free | **REAL** — iOS EventKit reads device free/busy → `POST /me/availability`; server `MockCalendarProvider` serves it | Google → `CalendarProvider` |
 | Device push registration | **REAL** (`POST /me/devices`; iOS registers on launch) | real APNs token → `ApnsProvider` |
 | Trust-model settings (permissions + spend cap) | **REAL** (`/me/permissions`, `/me/spend-cap`; persisted, You tab) | — |
-| Places options | **REAL mock** `MockPlacesProvider` (canned) | Google/Foursquare → `PlacesProvider` |
-| Auth (phone-OTP + Apple) | **REAL dev mock** (OTP `000000`) | `StytchAuthProvider` |
-| Payments — **even split + escrow hold/capture/refund** | **REAL** (`MockPaymentProvider`; split card on the locked plan, pay-share → capture, non-user pays via SMS link; `AGENT_CREATED_SPLIT` audit + `REFUND_SPLIT` undo) | `StripeConnectProvider` |
+| Places options | **REAL** — `DbPlacesProvider` searches a seeded Postgres venue catalog by tag/name relevance (no key) | live fetch → `GooglePlacesProvider` |
+| Agent preference memory (recall) | **REAL** — pgvector cosine over a local feature-hashing embedding (no external embeddings API); remembers choices on lock, annotates future proposals | swap in a hosted embedding model |
+| Auth (phone-OTP) | **REAL** — random 6-digit code, hashed in Redis w/ 5-min TTL, single-use, rate-limited, delivered over real comms (`OtpAuthProvider`, `AUTH_PROVIDER=otp`) | hosted/Apple login → `StytchAuthProvider` |
+| Payments — **even split + escrow hold/capture/refund** | **REAL** — the official **Stripe Node SDK** makes real PaymentIntent calls (manual-capture escrow) against Stripe's **`stripe-mock`** server (`PAYMENT_PROVIDER=stripe`, no paid key); split card, pay-share→capture, `REFUND_SPLIT` undo | drop a live `STRIPE_SECRET_KEY` + clear `STRIPE_API_BASE` |
+| Comms delivery (non-user invites, OTP) | **REAL** — `SmtpComms` sends real email over **SMTP** to Mailpit (`COMMS_PROVIDER=smtp`); viewable at `:8025` | cellular SMS → Twilio (`COMMS_PROVIDER=twilio`) |
 | Push notifications | **REAL dev mock** (logs token+payload) | `ApnsProvider` |
 | Media storage | **REAL local-disk** impl | `S3MediaStore` (R2/S3) |
 | **Booking** | **REAL** — `MockBookingProvider` books (confirmation + spend) or **degrades to tap-to-call/deep-link**; `LOCKED→BOOKED`; `AGENT_BOOKED` audit + `CANCEL_BOOKING` undo; "Book it" on the card | `BookingProvider` (OpenTable/Resy/DICE) |
 | **Self-enforcing contingencies** | **REAL** — Plot sets them at propose; shown on Plot's Desk; switch-to-backup is **enactable** (`RESTORE_LOCKED` undo) | autonomous enactment on real signals |
 | Surprise mode / private budget cap | **REAL** (never broadcast; enforced server-side) | — |
+
+### Now real with NO paid credential (run `docker compose up`)
+
+Using official local servers + self-hosted logic, these are no longer stubbed at all:
+
+| Capability | Real implementation (zero keys) |
+|---|---|
+| **Payments / escrow** | Official **Stripe Node SDK** → Stripe's **`stripe-mock`** server (real PaymentIntents, e.g. `pi_…`) |
+| **Comms delivery** (OTP + invites) | `SmtpComms` → real **SMTP** to **Mailpit** (inbox at `:8025`) |
+| **Phone-OTP auth** | random code, **Redis** hashed + TTL + single-use + rate-limited (`OtpAuthProvider`) |
+| **Places search** | `DbPlacesProvider` — real tag/name query over a seeded Postgres catalog |
+| **Preference recall** | real **pgvector** cosine over a local feature-hashing embedding |
+| **Realtime/in-app push** | live `message.created` / `plan.updated` / `audit.created` over **Socket.IO** |
+| **Calendar busy/free** | iOS **EventKit** → `POST /me/availability` (real device data) |
+| **Media** | real local-disk store |
+
+### The true floor — needs a paid account / business approval
+
+Only these remain stubbed, because the third-party itself requires credentials I can't self-issue.
+Each is a real interface with a working stand-in; going live is keys + one env flip:
+
+| Still stubbed | Why | Flip to real |
+|---|---|---|
+| **Cellular SMS** (SMTP delivery is already real) | Twilio number (paid) | `TWILIO_*` + `COMMS_PROVIDER=twilio` |
+| **Live Stripe** (SDK + escrow already real vs `stripe-mock`) | a Stripe account | live `STRIPE_SECRET_KEY` + clear `STRIPE_API_BASE` |
+| **APNs background push** (in-app realtime is already real) | Apple Developer key | `APNS_*` + `PUSH_PROVIDER=apns` |
+| **Apple / hosted login** (phone-OTP is already real) | Stytch / Apple Developer | `STYTCH_*` + `AUTH_PROVIDER=stytch` |
+| **Live places fetch** (DB catalog already real) | Google Places billing | `PLACES_PROVIDER=google` + key |
+| **Booking partner** (confirm/undo + tap-to-call already real) | OpenTable/Resy/DICE B2B access | implement `BookingProvider` + `BOOKING_PROVIDER=…` |
+| **Claude brain** (real Claude when keyed; safe "stay quiet" defaults otherwise) | `ANTHROPIC_API_KEY` (paid) | set the key |
+
+See the credential shopping list in the project notes for exactly what to obtain for each.
 
 ---
 
@@ -252,10 +290,11 @@ still covers the original slice.) `scripts/demo.ts` remains as an end-to-end tes
    split + escrow hold/capture/refund so the money state machine is exercised today.
 5. **Real Stytch auth** → implement `StytchAuthProvider` (`identity`); the `AuthProvider` interface
    and JWT session issuance are unchanged.
-6. **Claude in prod** → set `ANTHROPIC_API_KEY`; `agent/plot_agent/llm.py` already routes to
-   tool-use. Add streaming + cost accounting to the `await-votes` node.
-7. **pgvector recall** → `Embedding` table + index exist; wire a `recall` tool into the registry so
-   the agent remembers group preferences across plans.
+6. **Claude in prod** → set `ANTHROPIC_API_KEY`; `agent/plot_agent/brain.py` already drives every
+   decision via `claude-opus-4-8` structured outputs. Add streaming + cost accounting around it.
+7. ~~**pgvector recall**~~ — **DONE**: real pgvector cosine over a local embedding; Plot remembers
+   choices on lock and annotates future proposals (`api/src/recall/`). Next: swap the local
+   feature-hashing embedding for a hosted embedding model for sharper relevance.
 
 ---
 

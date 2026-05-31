@@ -2,9 +2,9 @@ import Foundation
 
 /// Live state over `URLSessionWebSocketTask`, speaking the Engine.IO v4 / Socket.IO framing the
 /// NestJS gateway uses. Minimal but real: handles open(0), ns-connect(40), ping(2)/pong(3), and
-/// event(42) frames. Emits decoded payloads for `message.created`, `plan.updated`, `audit.created`.
+/// event(42) frames. Emits decoded payloads for chat, plan, and audit updates.
 public final class SocketClient: NSObject, @unchecked Sendable {
-    public enum Event { case message(Message), planUpdated(Plan), auditCreated(AuditEntry) }
+    public enum Event { case message(Message), messageUpdated(Message), planUpdated(Plan), auditCreated(AuditEntry) }
 
     private var task: URLSessionWebSocketTask?
     private let base: String
@@ -66,6 +66,8 @@ public final class SocketClient: NSObject, @unchecked Sendable {
         switch name {
         case "message.created":
             if let m = try? dec.decode(Message.self, from: payload) { onEvent(.message(m)) }
+        case "message.updated":
+            if let m = try? dec.decode(Message.self, from: payload) { onEvent(.messageUpdated(m)) }
         case "plan.updated":
             if let p = try? dec.decode(Plan.self, from: payload) { onEvent(.planUpdated(p)) }
         case "audit.created":

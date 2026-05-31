@@ -39,6 +39,27 @@ async function main() {
   await prisma.contact.deleteMany();
   await prisma.user.deleteMany();
   await prisma.group.deleteMany();
+  await prisma.place.deleteMany();
+
+  // ── real venue catalog the Places connector searches (no external API key) ──
+  const places: Array<{ name: string; address: string; priceTier: number; phone?: string; url?: string; tags: string[] }> = [
+    { name: "Ananda Thai", address: "412 Mott St", priceTier: 2, phone: "+15551112222", url: "https://example.com/ananda", tags: ["thai", "dinner", "veggie", "casual"] },
+    { name: "Lucia Trattoria", address: "120 Sullivan St", priceTier: 4, phone: "+15559990000", url: "https://example.com/lucia", tags: ["italian", "dinner", "fancy"] },
+    { name: "The Back Room", address: "8 Norfolk St", priceTier: 3, phone: "+15553334444", url: "https://example.com/backroom", tags: ["bar", "drinks", "cocktails", "late"] },
+    { name: "Pier 17 Rooftop", address: "89 South St", priceTier: 2, phone: "+15555556666", url: "https://example.com/pier17", tags: ["outdoor", "drinks", "view", "rooftop"] },
+    { name: "Joe's Pizza", address: "7 Carmine St", priceTier: 1, phone: "+15557778888", url: "https://example.com/joes", tags: ["pizza", "casual", "cheap", "dinner"] },
+    { name: "Saigon Social", address: "172 Orchard St", priceTier: 2, phone: "+15552223333", url: "https://example.com/saigon", tags: ["vietnamese", "dinner", "veggie"] },
+    { name: "Brooklyn Bowl", address: "61 Wythe Ave", priceTier: 2, phone: "+15554445555", url: "https://example.com/bbowl", tags: ["bowling", "games", "drinks", "music"] },
+    { name: "Nitehawk Cinema", address: "136 Metropolitan Ave", priceTier: 2, phone: "+15556667777", url: "https://example.com/nitehawk", tags: ["movie", "cinema", "drinks"] },
+    { name: "Prospect Park Lawn", address: "Prospect Park", priceTier: 1, url: "https://example.com/ppark", tags: ["outdoor", "park", "picnic", "cheap", "casual"] },
+    { name: "Sunny's Bar", address: "253 Conover St", priceTier: 2, phone: "+15558889999", url: "https://example.com/sunnys", tags: ["bar", "drinks", "music", "casual"] },
+    { name: "Llama Inn", address: "50 Withers St", priceTier: 3, phone: "+15551230000", url: "https://example.com/llama", tags: ["peruvian", "dinner", "rooftop", "drinks"] },
+    { name: "Tacombi", address: "267 Elizabeth St", priceTier: 1, phone: "+15551230001", url: "https://example.com/tacombi", tags: ["tacos", "mexican", "casual", "cheap", "dinner"] },
+    { name: "House of Wax", address: "445 Albee Sq", priceTier: 2, phone: "+15551230002", url: "https://example.com/wax", tags: ["bar", "games", "drinks", "arcade"] },
+    { name: "Smorgasburg", address: "90 Kent Ave", priceTier: 1, url: "https://example.com/smorg", tags: ["outdoor", "food", "market", "casual", "veggie"] },
+    { name: "Karaoke Cave", address: "25 St Marks Pl", priceTier: 3, phone: "+15551230003", url: "https://example.com/cave", tags: ["karaoke", "games", "drinks", "private"] },
+  ];
+  await prisma.place.createMany({ data: places });
 
   // ── users ── (The Crew, per the mockup: You/Alex is the admin/organizer)
   const users = [

@@ -1,4 +1,4 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 import * as jwt from "jsonwebtoken";
 import { PrismaService } from "../common/prisma.service";
 import { config } from "../common/config";
@@ -12,17 +12,34 @@ export class IdentityService {
     @Inject(AUTH_PROVIDER) private readonly auth: AuthProvider,
   ) {}
 
+  // Auth-provider failures (bad code, invalid phone, Stytch 4xx) are user-facing → surface as 400
+  // with the underlying message rather than a 500.
+  private async guard<T>(fn: () => Promise<T>): Promise<T> {
+    try {
+      return await fn();
+    } catch (e) {
+      let msg = (e as Error).message ?? "authentication failed";
+      try {
+        const j = JSON.parse(msg);
+        msg = j.error_message ?? msg; // unwrap Stytch's structured error
+      } catch {
+        /* plain message */
+      }
+      throw new BadRequestException(msg);
+    }
+  }
+
   startOtp(phone: string) {
-    return this.auth.startOtp(phone);
+    return this.guard(() => this.auth.startOtp(phone));
   }
 
   async verifyOtp(phone: string, code: string) {
-    const identity = await this.auth.verifyOtp(phone, code);
+    const identity = await this.guard(() => this.auth.verifyOtp(phone, code));
     return this.sessionFor(identity);
   }
 
   async verifyApple(identityToken: string, displayName?: string) {
-    const identity = await this.auth.verifyApple(identityToken, displayName);
+    const identity = await this.guard(() => this.auth.verifyApple(identityToken, displayName));
     return this.sessionFor(identity);
   }
 

@@ -31,8 +31,10 @@ async function api(path: string, opts: { method?: string; token?: string; body?:
 }
 
 async function login(phone: string): Promise<string> {
-  await api("/auth/otp/start", { method: "POST", body: { phone } });
-  const s = await api("/auth/otp/verify", { method: "POST", body: { phone, code: "000000" } });
+  // real OTP: the random code is delivered over comms; in dev startOtp returns it as devHint
+  const start = await api("/auth/otp/start", { method: "POST", body: { phone } });
+  const code = start.devHint ?? "000000";
+  const s = await api("/auth/otp/verify", { method: "POST", body: { phone, code } });
   return s.token;
 }
 

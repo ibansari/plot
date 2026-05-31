@@ -9,11 +9,13 @@ import { MoneyModule } from "./money/money.module";
 import { NotificationsModule } from "./notifications/notifications.module";
 import { NonUserGatewayModule } from "./non-user-gateway/non-user.module";
 import { IntegrationsModule } from "./integrations/integrations.module";
+import { RecallModule } from "./recall/recall.module";
 
 @Module({
   imports: [
     CommonModule,
     InngestModule,
+    RecallModule,
     IdentityModule,
     GroupsModule,
     ChatModule,

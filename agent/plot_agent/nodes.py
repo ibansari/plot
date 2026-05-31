@@ -5,9 +5,9 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from .api_client import ApiClient
 from .tools import ToolRegistry, ApprovalRequired, build_decision_options
-from .constraints import active_constraints, detect_stated_constraint
-from .summary import choose_method, proposal_summary
-from .llm import classify_intent
+from .constraints import active_constraints, default_expiry
+from .brain import Brain, apply_reasoning
+from .summary import choose_method, proposal_summary  # deterministic fallback when the LLM is down
 from . import config
 
 
@@ -19,58 +19,124 @@ def _now() -> datetime:
 
 
 class AgentNodes:
-    def __init__(self, api: ApiClient | None = None):
+    def __init__(self, api: ApiClient | None = None, brain: Brain | None = None):
         self.api = api or ApiClient()
         self.tools = ToolRegistry(self.api)
+        self.brain = brain or Brain()
+        # pull in any configured MCP servers (Google Calendar / Maps / Resy …) as gated loop tools.
+        # best-effort: no servers configured or connect fails → the agent runs exactly as before.
+        try:
+            from .mcp_bridge import load_mcp
+
+            self._mcp = load_mcp(self.tools)
+        except Exception:
+            self._mcp = None
 
     # entry: always load FRESH thread context (never reuse a checkpointed snapshot, or we'd
     # classify a stale "latest message").
     def dispatch(self, state: dict) -> dict:
         return {"context": self.api.context(state["thread_id"])}
 
-    # ── remember: silently learn a constraint the latest speaker just stated (§A7) ──
-    # Runs before detect-intent on the message path; writes memory, never speaks.
-    def remember(self, state: dict) -> dict:
+    # ── detect-intent: Claude classifies ACT/STAY_QUIET/ASK and extracts any stated constraint,
+    # in ONE structured call. The latest speaker is attached so `remember` knows whose it is. ──
+    def detect_intent(self, state: dict) -> dict:
         ctx = state["context"]
-        human = [m for m in ctx.get("messages", []) if not m.get("isAgent")]
-        if not human:
+        analysis = self.brain.analyze_message(ctx["messages"])
+        out: dict = {"intent": {
+            "decision": analysis.decision, "activity": analysis.activity,
+            "time_hint": analysis.time_hint, "question": analysis.question, "rationale": analysis.rationale,
+        }}
+        if analysis.constraint:
+            human = [m for m in ctx.get("messages", []) if not m.get("isAgent")]
+            author = human[-1].get("authorName") if human else None
+            out["stated_constraint"] = {
+                "member": author,
+                "text": analysis.constraint.text,
+                "kind": analysis.constraint.kind,
+                "temporary": analysis.constraint.temporary,
+            }
+        return out
+
+    # ── remember: silently persist the constraint the brain extracted (§A7). Writes memory, never
+    # speaks. Runs after detect-intent on every message; no second LLM call. ──
+    def remember(self, state: dict) -> dict:
+        sc = state.get("stated_constraint")
+        if not sc or not sc.get("member"):
             return {}
-        latest = human[-1]
-        author = latest.get("authorName") or "?"
-        c = detect_stated_constraint(latest.get("body", ""), author, now=_now())
-        if not c:
-            return {}
-        member = next((m for m in ctx.get("members", []) if m.get("name") == author), None)
+        ctx = state["context"]
+        member = next((m for m in ctx.get("members", []) if m.get("name") == sc["member"]), None)
         if not member:
             return {}
+        expires_at = default_expiry(_now()) if sc.get("temporary") else None
         try:
             self.tools.invoke(
                 "remember_constraint",
-                group_id=ctx["groupId"], text=c.text, kind=c.kind,
+                group_id=ctx["groupId"], text=sc["text"], kind=sc["kind"],
                 user_id=member.get("userId"), contact_id=member.get("contactId"),
-                expires_at=c.expires_at,
+                expires_at=expires_at,
             )
         except Exception:
             pass  # memory is best-effort; never block the turn on it
-        return {"remembered": {"member": author, "text": c.text, "kind": c.kind}}
-
-    # ── detect-intent: ACT vs STAY_QUIET vs ASK ──
-    def detect_intent(self, state: dict) -> dict:
-        ctx = state["context"]
-        intent = classify_intent(ctx["messages"])
-        return {"intent": {
-            "decision": intent.decision, "activity": intent.activity,
-            "time_hint": intent.time_hint, "question": intent.question, "rationale": intent.rationale,
-        }}
+        return {"remembered": {"member": sc["member"], "text": sc["text"], "kind": sc["kind"]}}
 
     def stay_quiet(self, state: dict) -> dict:
         # silence is NOT an action: no message, no audit row (§9).
         return {"result": "STAY_QUIET", "decision": "STAY_QUIET"}
 
-    def ask(self, state: dict) -> dict:
-        q = state["intent"].get("question") or "When works, and what are you in the mood for?"
-        self.tools.invoke("post_message", thread_id=state["thread_id"], body=f"✦ {q}")
-        return {"result": "ASK", "decision": "ASK"}
+    def route_after_remember(self, state: dict) -> str:
+        decision = (state.get("intent") or {}).get("decision")
+        if state.get("trigger") == "confirmed_intent":
+            return "loop"
+        if decision == "STAY_QUIET":
+            return "quiet"
+        if decision == "ACT" and not self._is_explicit_command(state):
+            return "suggest"
+        return "loop"
+
+    def suggest_plan(self, state: dict) -> dict:
+        intent = state.get("intent") or {}
+        activity = intent.get("activity") or "a plan"
+        time_hint = intent.get("time_hint")
+        subject = f"{time_hint} {activity}" if time_hint and time_hint.lower() not in activity.lower() else activity
+        body = f"✦ Looks like {subject} is becoming real. Want me to draft a few options?"
+        self.api.post_agent_message(
+            state["thread_id"],
+            body,
+            metadata={
+                "kind": "plot_suggestion",
+                "status": "open",
+                "actions": ["draft_options", "dismiss"],
+                "activity": intent.get("activity"),
+                "timeHint": time_hint,
+            },
+        )
+        return {"result": "SUGGESTED", "decision": "ASK"}
+
+    def _is_explicit_command(self, state: dict) -> bool:
+        ctx = state.get("context") or {}
+        messages = ctx.get("messages") or ctx.get("recent_messages") or []
+        human = [m for m in messages if not m.get("isAgent") and m.get("kind") not in ("AGENT", "DECISION_CARD")]
+        body = (human[-1].get("body", "") if human else "").lower()
+        return "plot" in body and any(phrase in body for phrase in ("sort this", "draft", "plan this", "find options"))
+
+    # ── the agentic loop: Claude chooses tools to resolve the conversation (replaces the fixed
+    # gather→research→propose pipeline and the old single-shot `ask`). ──
+    def agent_loop(self, state: dict) -> dict:
+        from .loop import AgentLoop
+
+        return AgentLoop(self.tools, self.brain).run_turn(state, self._deterministic_propose)
+
+    # deterministic fallback used when the LLM loop is unavailable (no key / API error). Runs the
+    # original gather → research → propose path so the agent still resolves and never acts un-gated.
+    def _deterministic_propose(self, state: dict) -> dict:
+        intent = state.get("intent") or {}
+        if intent.get("decision") == "ASK":
+            q = intent.get("question") or "When works, and what are you all in the mood for?"
+            self.tools.invoke("post_message", thread_id=state["thread_id"], body=f"✦ {q}")
+            return {"result": "ASK", "decision": "ASK"}
+        state = {**state, **self.gather_availability(state)}
+        state = {**state, **self.research(state)}
+        return self.propose_decision(state)
 
     # ── gather-availability (busy/free) ──
     def gather_availability(self, state: dict) -> dict:
@@ -93,21 +159,24 @@ class AgentNodes:
         )
         return {"places": places, "activity": activity}
 
-    # ── propose-decision: build mixed options, open voting, invite non-users ──
+    # ── propose-decision: build mixed options and post a draft card for the group to shape ──
     def propose_decision(self, state: dict) -> dict:
         ctx = state["context"]
-        # constraint memory (§A7): drop expired constraints, then let option-building apply them
-        constraints = active_constraints(ctx.get("members") or [], now=_now())
-        options = build_decision_options(
-            state.get("availability") or {}, state.get("places") or [], state.get("activity"),
-            constraints=constraints,
-        )
         activity = state.get("activity") or "hang"
         time_hint = (state.get("intent") or {}).get("time_hint")
+        # assemble candidate options, then let Claude reason over them against the group's constraints
+        base_options = build_decision_options(
+            state.get("availability") or {}, state.get("places") or [], activity,
+        )
+        constraints = active_constraints(ctx.get("members") or [], now=_now())  # drop expired (§A7)
+        reasoning = self.brain.reason_about_options(activity, time_hint, base_options, constraints)
+        options = apply_reasoning(base_options, reasoning)
+        if reasoning is not None:
+            method, summary = reasoning.method, reasoning.summary
+        else:  # LLM unavailable → conservative deterministic fallback (not regex): count + template
+            method = choose_method(options)
+            summary = proposal_summary(activity, time_hint, options)
         title = f"{activity.capitalize()} — {time_hint or 'soon'}"
-        # Plot's voice: pick a decision method and write a card body that shows its reasoning (§A2/§A3)
-        method = choose_method(options)
-        summary = proposal_summary(activity, time_hint, options)
         plan = self.tools.invoke(
             "propose_plan",
             payload={
@@ -122,7 +191,8 @@ class AgentNodes:
             },
         )
         plan_id = plan["id"]
-        # bridge to non-users: text each Contact a signed vote link
+        # Bridge to non-users: text each Contact a signed vote link. It becomes actionable once a
+        # member starts voting from the shared draft card.
         invited = []
         for m in ctx["members"]:
             if m.get("isNonUser") and m.get("contactId"):
@@ -153,8 +223,15 @@ class AgentNodes:
 
     def act(self, state: dict) -> dict:
         # lock is reversible (compensating UNLOCK_PLAN) and spends nothing — proceed.
-        self.tools.invoke("lock_plan", plan_id=state["plan_id"], reason="soft-deadline auto-lock")
-        return {"result": "LOCKED", "decision": "ACT"}
+        plan = self.tools.invoke("lock_plan", plan_id=state["plan_id"], reason="soft-deadline auto-lock")
+        if plan.get("state") not in ("LOCKED", "BOOKED"):
+            return {"result": "AWAITING_GROUP_PICK", "decision": "ASK"}
+        invited = []
+        for member in (state.get("context") or {}).get("members", []):
+            if member.get("isNonUser") and member.get("contactId"):
+                self.tools.invoke("invite_non_user", plan_id=state["plan_id"], contact_id=member["contactId"], purpose="rsvp")
+                invited.append(member["name"])
+        return {"result": "LOCKED", "decision": "ACT", "invited": invited}
 
     # ── settle-up: after a lock with a real cost, auto-set-up an even split (§B1). ──
     # Money is least-authority: if the group hasn't granted SPEND_MONEY, Plot doesn't move money —

@@ -1,13 +1,13 @@
 import SwiftUI
 
-/// The Plot decision card + its resolution, mirroring the mockup. While VOTING it shows the
-/// options with ↑BOOST/↓VETO, a crown on the leader, vote tallies, and an amber soft-deadline
-/// banner. Once LOCKED it shows the "confirm" card (seal + when/where/who) and the bring-list.
+/// The Plot decision card moves from editable draft → voting → locked RSVP/logistics.
 struct DecisionCardView: View {
     let planId: String
     @Bindable var vm: ChatViewModel
     @State private var myVotes: [String: String] = [:]   // optionId → "UP"/"DOWN" (local highlight)
     @State private var showDesk = false
+    @State private var showAddOption = false
+    @State private var newOption = ""
     @Environment(\.openURL) private var openURL
 
     private var plan: Plan? { vm.plans[planId] }
@@ -15,7 +15,9 @@ struct DecisionCardView: View {
     var body: some View {
         Group {
             if let plan {
-                if plan.state == .LOCKED || plan.state == .BOOKED {
+                if plan.state == .PROPOSED {
+                    draftView(plan)
+                } else if plan.state == .LOCKED || plan.state == .BOOKED {
                     lockedView(plan)
                 } else {
                     votingView(plan)
@@ -26,6 +28,72 @@ struct DecisionCardView: View {
         }
         .sheet(isPresented: $showDesk) { PlotDeskView(planId: planId, vm: vm) }
         .task(id: showDesk) { if showDesk { await vm.loadAudit(planId: planId) } }
+        .alert("Add an option", isPresented: $showAddOption) {
+            TextField("What should the group consider?", text: $newOption)
+            Button("Cancel", role: .cancel) { newOption = "" }
+            Button("Add") {
+                let label = newOption.trimmingCharacters(in: .whitespacesAndNewlines)
+                newOption = ""
+                if !label.isEmpty { Task { await vm.addOption(planId: planId, label: label) } }
+            }
+        }
+    }
+
+    // MARK: DRAFT
+    @ViewBuilder private func draftView(_ plan: Plan) -> some View {
+        HStack(alignment: .top, spacing: 9) {
+            PlotMark(.s)
+            VStack(alignment: .leading, spacing: 10) {
+                PlotCard {
+                    VStack(spacing: 0) {
+                        VStack(alignment: .leading, spacing: 5) {
+                            HStack(spacing: 7) {
+                                PlotMark(.xs)
+                                Text("DRAFT · SHAPE THE OPTIONS")
+                                    .font(Theme.mono(10)).tracking(0.8).foregroundStyle(Theme.accent)
+                            }
+                            Text(plan.title).font(Theme.display(18)).foregroundStyle(Theme.text)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 15).padding(.vertical, 13)
+                        .overlay(Rectangle().fill(Theme.line).frame(height: 1), alignment: .bottom)
+
+                        ForEach(plan.options) { opt in
+                            HStack(alignment: .top, spacing: 10) {
+                                VStack(alignment: .leading, spacing: 5) {
+                                    Text(opt.label).font(Theme.body(14.5, .bold)).foregroundStyle(Theme.text)
+                                    Text(metaLine(opt)).font(Theme.mono(10.5)).foregroundStyle(Theme.textDim)
+                                    if let why = opt.why, !why.isEmpty {
+                                        Text(why).font(Theme.body(11.5)).foregroundStyle(Theme.accent)
+                                    }
+                                }
+                                Spacer(minLength: 0)
+                                if plan.options.count > 2 {
+                                    Button { Task { await vm.removeOption(planId: plan.id, optionId: opt.id) } } label: {
+                                        Image(systemName: "xmark").font(.system(size: 11, weight: .bold)).foregroundStyle(Theme.textDim)
+                                            .frame(width: 28, height: 28)
+                                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.line2, lineWidth: 1))
+                                    }
+                                }
+                            }
+                            .padding(.horizontal, 15).padding(.vertical, 12)
+                            .overlay(Rectangle().fill(Theme.line).frame(height: 1), alignment: .bottom)
+                        }
+
+                        HStack(spacing: 8) {
+                            ghostButton("Add option") { showAddOption = true }
+                            Button { Task { await vm.startVote(planId: plan.id) } } label: {
+                                Text("Start vote").font(Theme.body(12.5, .bold)).foregroundStyle(Theme.accentInk)
+                                    .frame(maxWidth: .infinity).padding(.vertical, 9).background(Theme.accent)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                            }
+                        }
+                        .padding(12)
+                    }
+                }
+            }
+            Spacer(minLength: 12)
+        }
     }
 
     // MARK: VOTING
@@ -78,7 +146,7 @@ struct DecisionCardView: View {
 
     private func optionRow(_ plan: Plan, _ opt: PlanOption, isLeader: Bool) -> some View {
         let tally = plan.tally(opt.id)
-        let mine = myVotes[opt.id]
+        let mine = myVotes[opt.id] ?? (plan.viewerVote?.optionId == opt.id ? plan.viewerVote?.value : nil)
         return VStack(spacing: 0) {
             HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 6) {
@@ -195,6 +263,7 @@ struct DecisionCardView: View {
                         .padding(15)
 
                         bookingActions(plan)
+                        rsvpActions(plan)
 
                         HStack(spacing: 8) {
                             ghostButton("Directions") {}
@@ -207,6 +276,29 @@ struct DecisionCardView: View {
                 bringList(plan)
             }
             Spacer(minLength: 12)
+        }
+    }
+
+    @ViewBuilder private func rsvpActions(_ plan: Plan) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("CAN YOU MAKE IT?").font(Theme.mono(10)).tracking(0.6).foregroundStyle(Theme.textDim)
+            HStack(spacing: 7) {
+                rsvpButton("I'm in", status: "YES", plan: plan)
+                rsvpButton("Maybe", status: "MAYBE", plan: plan)
+                rsvpButton("Can't make it", status: "NO", plan: plan)
+            }
+        }
+        .padding(.horizontal, 15).padding(.bottom, 12)
+    }
+
+    private func rsvpButton(_ title: String, status: String, plan: Plan) -> some View {
+        let selected = plan.viewerRsvp == status
+        return Button { Task { await vm.rsvp(planId: plan.id, status: status) } } label: {
+            Text(title).font(Theme.body(11.5, .bold)).foregroundStyle(selected ? Theme.accentInk : Theme.text)
+                .frame(maxWidth: .infinity).padding(.vertical, 8)
+                .background(selected ? Theme.accent : Color.clear)
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(selected ? Theme.accent : Theme.line2, lineWidth: 1))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
         }
     }
 
@@ -330,8 +422,7 @@ struct DecisionCardView: View {
             ? plan.votes.reduce(0) { $0 + $1.up + $1.down } : plan.votes.reduce(0) { $0 + $1.up + $1.down }
     }
     private func goingCount(_ plan: Plan) -> Int {
-        let yes = plan.rsvps.filter { $0.status == "YES" }.count
-        return yes > 0 ? yes : max(plan.rsvps.count, 5)
+        plan.rsvps.filter { $0.status == "YES" }.count
     }
     private func metaLine(_ opt: PlanOption) -> String {
         var parts = [opt.kind.rawValue]

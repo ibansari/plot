@@ -2,19 +2,31 @@ import { Module } from "@nestjs/common";
 import { PlanService } from "./plan.service";
 import { PlanController } from "./plan.controller";
 import { BOOKING_PROVIDER } from "./booking/booking.provider";
+import { ReservationBookingProvider } from "./booking/booking.reservation";
 import { MockBookingProvider } from "./booking/booking.mock";
 import { StubBookingProvider } from "./booking/booking.stub";
+import { PrismaService } from "../common/prisma.service";
 import { config } from "../common/config";
 
 @Module({
   controllers: [PlanController],
   providers: [
     PlanService,
-    // BOOKING_PROVIDER: "mock" actually books (+ degrades when no venue); "stub" always degrades;
-    // real OpenTable/Resy/DICE plug in behind the same interface (//TODO).
+    // BOOKING_PROVIDER: "reservation" (default) = REAL internal engine (capacity + conflict checks)
+    // · "mock" = always-confirm · "stub" = always-degrade · real partner (OpenTable/Resy/DICE) //TODO.
     {
       provide: BOOKING_PROVIDER,
-      useFactory: () => (config.bookingProvider === "stub" ? new StubBookingProvider() : new MockBookingProvider()),
+      useFactory: (prisma: PrismaService) => {
+        switch (config.bookingProvider) {
+          case "stub":
+            return new StubBookingProvider();
+          case "mock":
+            return new MockBookingProvider();
+          default:
+            return new ReservationBookingProvider(prisma);
+        }
+      },
+      inject: [PrismaService],
     },
   ],
   exports: [PlanService],

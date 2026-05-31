@@ -27,11 +27,14 @@ class ApiClient:
             return c.get(f"/plans/{plan_id}").raise_for_status().json()
 
     # ── actions (each audited API-side) ──
-    def post_agent_message(self, thread_id: str, body: str, kind: str = "AGENT", plan_id: str | None = None) -> dict:
+    def post_agent_message(
+        self, thread_id: str, body: str, kind: str = "AGENT",
+        plan_id: str | None = None, metadata: dict | None = None,
+    ) -> dict:
         with self._client() as c:
             return c.post(
                 f"/internal/threads/{thread_id}/agent-message",
-                json={"body": body, "kind": kind, "planId": plan_id},
+                json={"body": body, "kind": kind, "planId": plan_id, "metadata": metadata},
             ).raise_for_status().json()
 
     def gather_availability(self, group_id: str, from_iso: str, to_iso: str, plan_id: str | None = None) -> dict:

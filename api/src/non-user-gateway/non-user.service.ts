@@ -35,10 +35,10 @@ export class NonUserGatewayService {
     const link = `${config.webBaseUrl}/v/${token.id}?s=${signature}`;
     const plan = await this.prisma.plan.findUniqueOrThrow({ where: { id: planId } });
 
-    await this.notify.sendSms(
-      contact.phone,
-      `✦ Plot: the crew is planning "${plan.title}". Tap to weigh in (no app needed):\n${link}`,
-    );
+    const prompt = purpose === "rsvp"
+      ? `✦ Plot: "${plan.title}" is locked. Can you make it? RSVP here (no app needed):\n${link}`
+      : `✦ Plot: the crew is planning "${plan.title}". Tap to weigh in (no app needed):\n${link}`;
+    await this.notify.sendSms(contact.phone, prompt);
 
     await this.audit.record({
       planId,
@@ -65,7 +65,7 @@ export class NonUserGatewayService {
   async pageData(tokenId: string, sig: string) {
     const token = await this.validate(tokenId, sig);
     const contact = await this.prisma.contact.findUniqueOrThrow({ where: { id: token.contactId } });
-    const plan = await this.plans.getPlan(token.planId);
+    const plan = await this.plans.getPlan(token.planId, { contactId: token.contactId });
     return { purpose: token.purpose, contactName: contact.displayName, plan };
   }
 

@@ -15,6 +15,7 @@ import {
 } from "@plot/db";
 import { nextState, PlanEvent } from "./plan.statemachine";
 import { BOOKING_PROVIDER, BookingProvider } from "./booking/booking.provider";
+import { RecallService } from "../recall/recall.service";
 
 export interface ProposeOptionInput {
   kind: OptionKind;
@@ -44,6 +45,7 @@ export class PlanService {
     private readonly audit: AuditService,
     private readonly realtime: RealtimeGateway,
     private readonly inngest: InngestService,
+    private readonly recall: RecallService,
     @Inject(BOOKING_PROVIDER) private readonly booking: BookingProvider,
   ) {}
 
@@ -54,7 +56,7 @@ export class PlanService {
     return this.prisma.plan.update({ where: { id: planId }, data: { state: to } });
   }
 
-  // ── the agent's propose-decision node lands here: build the plan + decision card + open voting ──
+  // ── the agent's propose-decision node lands here: build a draft decision card for review ──
   async proposeDecision(input: {
     threadId: string;
     groupId: string;
@@ -68,7 +70,6 @@ export class PlanService {
   }) {
     if (input.options.length < 2) throw new BadRequestException("need at least 2 options to vote on");
 
-    const softDeadline = new Date(Date.now() + config.softDeadlineSeconds * 1000);
     const plan = await this.prisma.plan.create({
       data: {
         groupId: input.groupId,
@@ -77,7 +78,6 @@ export class PlanService {
         organizerId: input.organizerId,
         spendCapCents: input.spendCapCents ?? config.defaultSpendCapCents,
         surpriseMode: input.surpriseMode ?? false,
-        softDeadline,
         options: {
           create: input.options.map((o) => ({
             kind: o.kind,
@@ -96,9 +96,11 @@ export class PlanService {
       include: { options: true },
     });
 
-    // DRAFT → PROPOSED → VOTING
+    // DRAFT → PROPOSED. A member explicitly opens voting after the group has shaped the draft.
     await this.transition(plan.id, "propose");
-    await this.transition(plan.id, "openVoting");
+
+    // semantic recall (§18): annotate any option the group has enjoyed before (pgvector similarity)
+    await this.annotateFromMemory(input.groupId, plan.options).catch(() => {});
 
     // self-enforcing contingencies (shown on Plot's Desk; the second-place option is the backup)
     await this.setContingencies(plan.id, this.defaultContingencies(plan.options), { silent: true });
@@ -113,7 +115,6 @@ export class PlanService {
         metadata: {
           kind: "decision_card",
           planId: plan.id,
-          softDeadline: softDeadline.toISOString(),
           method: input.method ?? "boost_veto",
         },
       },
@@ -123,32 +124,87 @@ export class PlanService {
     await this.audit.record({
       planId: plan.id,
       action: AuditAction.AGENT_PROPOSED_PLAN,
-      summary: `Proposed "${input.title}" with ${input.options.length} options`,
+      summary: `Drafted "${input.title}" with ${input.options.length} options`,
       payload: { options: input.options.map((o) => o.label) },
       undo: { type: "DELETE_PLAN", planId: plan.id },
       threadId: input.threadId,
     });
-    await this.audit.record({
-      planId: plan.id,
-      action: AuditAction.AGENT_OPENED_VOTING,
-      summary: `Opened voting; soft deadline in ${config.softDeadlineSeconds}s`,
-      payload: { softDeadline: softDeadline.toISOString() },
-      undo: { type: "NONE" },
-      threadId: input.threadId,
-    });
-
-    // hand the timer to the durable workflow (Inngest owns time; it will call the agent back)
-    await this.inngest.send("plot/voting.opened", {
-      planId: plan.id,
-      threadId: input.threadId,
-      softDeadlineIso: softDeadline.toISOString(),
-    });
-
     await this.broadcastPlan(plan.id);
     return this.getPlan(plan.id);
   }
 
-  // ── voting ──
+  // ── draft shaping + voting ──
+  async startVoting(planId: string) {
+    const plan = await this.prisma.plan.findUniqueOrThrow({
+      where: { id: planId },
+      include: { options: true },
+    });
+    if (plan.state !== PlanState.PROPOSED) throw new BadRequestException("voting can only start from a draft");
+    if (plan.options.length < 2) throw new BadRequestException("need at least 2 options to vote on");
+
+    const softDeadline = new Date(Date.now() + config.softDeadlineSeconds * 1000);
+    await this.transition(planId, "openVoting");
+    await this.prisma.plan.update({ where: { id: planId }, data: { softDeadline } });
+
+    const time = softDeadline.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    const msg = await this.prisma.message.create({
+      data: {
+        threadId: plan.threadId,
+        kind: MessageKind.AGENT,
+        body: `✦ Cool, I opened the vote. I'll lock the leader at ${time} unless someone vetoes.`,
+        planId,
+      },
+    });
+    this.realtime.emitToThread(plan.threadId, "message.created", await this.messageDto(msg.id));
+    await this.audit.record({
+      planId,
+      action: AuditAction.AGENT_OPENED_VOTING,
+      summary: `Opened voting; soft deadline in ${config.softDeadlineSeconds}s`,
+      payload: { softDeadline: softDeadline.toISOString() },
+      undo: { type: "NONE" },
+      threadId: plan.threadId,
+    });
+    await this.inngest.send("plot/voting.opened", {
+      planId,
+      threadId: plan.threadId,
+      softDeadlineIso: softDeadline.toISOString(),
+    });
+    await this.broadcastPlan(planId);
+    return this.getPlan(planId);
+  }
+
+  async addOption(planId: string, input: ProposeOptionInput) {
+    const plan = await this.prisma.plan.findUniqueOrThrow({ where: { id: planId } });
+    if (plan.state !== PlanState.PROPOSED) throw new BadRequestException("Options can only be edited while the plan is a draft");
+    await this.prisma.planOption.create({
+      data: {
+        planId,
+        kind: input.kind,
+        label: input.label,
+        startsAt: input.startsAt ? new Date(input.startsAt) : null,
+        endsAt: input.endsAt ? new Date(input.endsAt) : null,
+        place: input.place,
+        priceTier: input.priceTier,
+        metadata:
+          input.phone || input.url || input.why || input.fitFlags
+            ? { phone: input.phone, url: input.url, why: input.why, fitFlags: input.fitFlags }
+            : undefined,
+      },
+    });
+    await this.broadcastPlan(planId);
+    return this.getPlan(planId);
+  }
+
+  async removeOption(planId: string, optionId: string) {
+    const plan = await this.prisma.plan.findUniqueOrThrow({ where: { id: planId }, include: { options: true } });
+    if (plan.state !== PlanState.PROPOSED) throw new BadRequestException("Options can only be edited while the plan is a draft");
+    if (plan.options.length <= 2) throw new BadRequestException("a draft needs at least 2 options");
+    if (!plan.options.some((option) => option.id === optionId)) throw new BadRequestException("option does not belong to this plan");
+    await this.prisma.planOption.delete({ where: { id: optionId } });
+    await this.broadcastPlan(planId);
+    return this.getPlan(planId);
+  }
+
   async castVote(
     planId: string,
     voter: { userId?: string; contactId?: string; viaToken?: string },
@@ -168,7 +224,7 @@ export class PlanService {
       create: { planId, optionId, value, userId: voter.userId, contactId: voter.contactId, viaToken: voter.viaToken },
     });
     await this.broadcastPlan(planId);
-    return this.getPlan(planId);
+    return this.getPlan(planId, voter);
   }
 
   async setRsvp(planId: string, who: { userId?: string; contactId?: string }, status: RsvpStatus) {
@@ -181,7 +237,7 @@ export class PlanService {
       create: { planId, status, userId: who.userId, contactId: who.contactId },
     });
     await this.broadcastPlan(planId);
-    return this.getPlan(planId);
+    return this.getPlan(planId, who);
   }
 
   // ── spend-cap gate (§13 #4). Returns {allowed} or {needsApproval}. ──
@@ -195,12 +251,17 @@ export class PlanService {
   async lock(planId: string, opts: { actor?: string; reason?: string } = {}) {
     const plan = await this.prisma.plan.findUniqueOrThrow({
       where: { id: planId },
-      include: { options: { include: { votes: true } } },
+      include: { options: { include: { votes: { include: { contact: true } } } } },
     });
     if (plan.state !== PlanState.VOTING) throw new BadRequestException(`cannot lock from ${plan.state}`);
 
-    const leader = this.pickLeader(plan.options);
-    if (!leader) throw new BadRequestException("no options to lock");
+    const ranked = this.rankOptions(plan.options);
+    const top = ranked[0];
+    if (!top) throw new BadRequestException("no options to lock");
+    const leaders = ranked.filter((candidate) => candidate.score === top.score);
+    if (leaders.every((candidate) => candidate.down > 0)) return this.deferLock(plan, leaders, "veto");
+    if (leaders.length > 1) return this.deferLock(plan, leaders, "tie");
+    const leader = top.option;
 
     await this.transition(planId, "lock");
     const locked = await this.prisma.plan.update({
@@ -217,13 +278,18 @@ export class PlanService {
     await this.prisma.bringItem.createMany({
       data: bring.map((label) => ({ planId, label, generated: true })),
     });
+    await this.createPendingRsvps(planId, plan.groupId);
 
     // post lock confirmation
+    const guestNames = leader.votes
+      .filter((vote) => vote.viaToken && vote.contact?.displayName)
+      .map((vote) => vote.contact!.displayName);
+    const guestNote = guestNames.length ? `, ${guestNames.join(", ")} voted by guest link` : "";
     const msg = await this.prisma.message.create({
       data: {
         threadId: plan.threadId,
         kind: MessageKind.AGENT,
-        body: `✦ Locked: ${leader.label}${leader.place ? ` @ ${leader.place}` : ""}. RSVPs frozen; bring-list posted.`,
+        body: `✦ Locked ${leader.label}: ${top.up} boost${top.up === 1 ? "" : "s"}, ${top.down} veto${top.down === 1 ? "" : "es"}${guestNote}. RSVP when you know.`,
         planId,
       },
     });
@@ -233,8 +299,8 @@ export class PlanService {
       planId,
       actor: opts.actor ?? "plot",
       action: AuditAction.AGENT_LOCKED_PLAN,
-      summary: `Locked leader "${leader.label}" (${opts.reason ?? "soft-deadline"})`,
-      payload: { leaderOptionId: leader.id, place: leader.place, time: locked.lockedTime?.toISOString() },
+      summary: `Locked "${leader.label}" with ${top.up} boosts and ${top.down} vetoes (${opts.reason ?? "soft-deadline"})`,
+      payload: { leaderOptionId: leader.id, place: leader.place, time: locked.lockedTime?.toISOString(), boosts: top.up, vetoes: top.down, guestNames },
       // the compensating action: roll back to VOTING
       undo: { type: "UNLOCK_PLAN", planId, prevState: PlanState.VOTING },
       threadId: plan.threadId,
@@ -248,8 +314,32 @@ export class PlanService {
       threadId: plan.threadId,
     });
 
+    // remember this choice so future proposals can recall it (§18 semantic memory)
+    await this.recall
+      .remember(plan.groupId, "choice", `Chose "${leader.label}"${leader.place ? ` at ${leader.place}` : ""}`)
+      .catch(() => {});
+
     await this.broadcastPlan(planId);
     return this.getPlan(planId);
+  }
+
+  // Annotate options the group has chosen before (real pgvector similarity). Appends a recalled
+  // note to the option's `why`, so Plot's proposal shows it's learning from history.
+  private async annotateFromMemory(
+    groupId: string,
+    options: { id: string; label: string; place: string | null; metadata: unknown }[],
+  ) {
+    for (const o of options) {
+      const q = `${o.label} ${o.place ?? ""}`.trim();
+      if (!q) continue;
+      const hits = await this.recall.recall(groupId, q, 1);
+      if (hits[0] && hits[0].score > 0.45) {
+        const meta = ((o.metadata as Record<string, unknown> | null) ?? {}) as { why?: string };
+        const note = "the group enjoyed this before";
+        meta.why = meta.why ? `${meta.why} · ${note}` : `✦ ${note}`;
+        await this.prisma.planOption.update({ where: { id: o.id }, data: { metadata: meta as object } });
+      }
+    }
   }
 
   // ── booking: additive enrichment on a LOCKED plan. Books when possible, else degrades to
@@ -420,15 +510,74 @@ export class PlanService {
     return this.getPlan(planId);
   }
 
-  // ── leader selection: highest (up - down); ties broken by earliest start time ──
-  private pickLeader(options: { id: string; label: string; place: string | null; startsAt: Date | null; votes: { value: VoteValue }[] }[]) {
+  // ── leader selection: ties and veto objections stay social instead of being silently broken ──
+  private rankOptions<T extends { id: string; label: string; place: string | null; startsAt: Date | null; votes: { value: VoteValue }[] }>(options: T[]) {
     return [...options]
-      .map((o) => ({
-        o,
-        score: o.votes.reduce((s, v) => s + (v.value === VoteValue.UP ? 1 : v.value === VoteValue.DOWN ? -1 : 0), 0),
+      .map((option) => ({
+        option,
+        up: option.votes.filter((vote) => vote.value === VoteValue.UP).length,
+        down: option.votes.filter((vote) => vote.value === VoteValue.DOWN).length,
       }))
-      .sort((a, b) => b.score - a.score || (a.o.startsAt?.getTime() ?? 0) - (b.o.startsAt?.getTime() ?? 0))
-      .map((x) => x.o)[0];
+      .map((candidate) => ({ ...candidate, score: candidate.up - candidate.down }))
+      .sort((a, b) => b.score - a.score);
+  }
+
+  private async deferLock(
+    plan: { id: string; threadId: string },
+    leaders: { option: { label: string }; score: number; down: number }[],
+    reason: "tie" | "veto",
+  ) {
+    const labels = leaders.map((leader) => leader.option.label);
+    const priorTie = reason === "tie"
+      ? await this.prisma.auditLog.findFirst({
+          where: { planId: plan.id, action: AuditAction.AGENT_REQUESTED_APPROVAL, summary: { startsWith: "Tie at deadline" } },
+        })
+      : null;
+    const extend = reason === "tie" && !priorTie;
+    const softDeadline = extend ? new Date(Date.now() + config.tieBreakSeconds * 1000) : undefined;
+    const body = reason === "tie" && extend
+      ? `✦ It's tied between ${labels.join(" and ")}. Give one of these a boost and I'll check again shortly.`
+      : reason === "tie"
+        ? `✦ It's still tied between ${labels.join(" and ")}. Someone make the human pick and I'll lock it.`
+        : `✦ The leader has a veto. Someone make the human pick before I lock anything.`;
+    if (softDeadline) {
+      await this.prisma.plan.update({ where: { id: plan.id }, data: { softDeadline } });
+      await this.inngest.send("plot/voting.opened", {
+        planId: plan.id,
+        threadId: plan.threadId,
+        softDeadlineIso: softDeadline.toISOString(),
+      });
+    }
+    const msg = await this.prisma.message.create({
+      data: { threadId: plan.threadId, kind: MessageKind.AGENT, body, planId: plan.id },
+    });
+    this.realtime.emitToThread(plan.threadId, "message.created", await this.messageDto(msg.id));
+    await this.audit.record({
+      planId: plan.id,
+      action: AuditAction.AGENT_REQUESTED_APPROVAL,
+      summary: reason === "tie" ? `Tie at deadline: ${labels.join(" / ")}` : `Veto objection: ${labels.join(" / ")}`,
+      payload: { reason, leaders: labels, extendedUntil: softDeadline?.toISOString() },
+      undo: { type: "NONE" },
+      threadId: plan.threadId,
+    });
+    await this.broadcastPlan(plan.id);
+    return this.getPlan(plan.id);
+  }
+
+  private async createPendingRsvps(planId: string, groupId: string) {
+    const members = await this.prisma.groupMember.findMany({ where: { groupId } });
+    await Promise.all(
+      members.map((member) => {
+        const where = member.userId
+          ? { planId_userId: { planId, userId: member.userId } }
+          : { planId_contactId: { planId, contactId: member.contactId! } };
+        return this.prisma.rsvp.upsert({
+          where: where as never,
+          update: {},
+          create: { planId, status: RsvpStatus.PENDING, userId: member.userId, contactId: member.contactId },
+        });
+      }),
+    );
   }
 
   private bringListFor(label: string, place: string | null): string[] {
@@ -441,7 +590,7 @@ export class PlanService {
   }
 
   // ── DTO assembly ──
-  async getPlan(planId: string) {
+  async getPlan(planId: string, viewer: { userId?: string; contactId?: string } = {}) {
     const plan = await this.prisma.plan.findUniqueOrThrow({
       where: { id: planId },
       include: {
@@ -452,6 +601,12 @@ export class PlanService {
       },
     });
     const split = plan.splits[0];
+    const viewerVote = plan.options
+      .flatMap((option) => option.votes.map((vote) => ({ optionId: option.id, vote })))
+      .find(({ vote }) => viewer.userId ? vote.userId === viewer.userId : viewer.contactId ? vote.contactId === viewer.contactId : false);
+    const viewerRsvp = plan.rsvps.find((rsvp) =>
+      viewer.userId ? rsvp.userId === viewer.userId : viewer.contactId ? rsvp.contactId === viewer.contactId : false,
+    );
     return {
       id: plan.id,
       title: plan.title,
@@ -499,6 +654,8 @@ export class PlanService {
         up: o.votes.filter((v) => v.value === VoteValue.UP).length,
         down: o.votes.filter((v) => v.value === VoteValue.DOWN).length,
       })),
+      viewerVote: viewerVote ? { optionId: viewerVote.optionId, value: viewerVote.vote.value } : undefined,
+      viewerRsvp: viewerRsvp?.status,
       rsvps: plan.rsvps.map((r) => ({
         name: r.user?.displayName ?? r.contact?.displayName ?? "?",
         status: r.status,

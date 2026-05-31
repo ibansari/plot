@@ -19,13 +19,18 @@ _graph = build_graph(_nodes)
 class RunRequest(BaseModel):
     threadId: str
     planId: str | None = None
-    trigger: str = "message"  # "message" | "deadline"
+    trigger: str = "message"  # "message" | "confirmed_intent" | "deadline"
 
 
 @app.get("/health")
 def health():
     from . import config
-    return {"ok": True, "llm": "claude" if config.ANTHROPIC_API_KEY else "deterministic-fallback"}
+    # the brain is the only intelligence path; with no key it returns safe defaults (Plot stays quiet)
+    return {
+        "ok": True,
+        "model": config.ANTHROPIC_MODEL,
+        "llm": "claude" if config.ANTHROPIC_API_KEY else "no-key (safe defaults; set ANTHROPIC_API_KEY)",
+    }
 
 
 @app.post("/run")

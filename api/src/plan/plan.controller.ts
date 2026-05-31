@@ -1,9 +1,9 @@
-import { Body, Controller, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
 import { PlanService, ProposeOptionInput } from "./plan.service";
 import { AuditService } from "../common/audit.service";
 import { PrismaService } from "../common/prisma.service";
 import { AuthGuard, AuthedRequest } from "../common/auth.guard";
-import { RsvpStatus, VoteValue } from "@plot/db";
+import { OptionKind, RsvpStatus, VoteValue } from "@plot/db";
 
 @UseGuards(AuthGuard)
 @Controller()
@@ -16,8 +16,26 @@ export class PlanController {
 
   // ── public (app user) ──
   @Get("plans/:id")
-  get(@Param("id") id: string) {
-    return this.plans.getPlan(id);
+  get(@Param("id") id: string, @Req() req: AuthedRequest) {
+    return this.plans.getPlan(id, { userId: req.userId });
+  }
+
+  @Post("plans/:id/start-vote")
+  startVote(@Param("id") id: string) {
+    return this.plans.startVoting(id);
+  }
+
+  @Post("plans/:id/options")
+  addOption(
+    @Param("id") id: string,
+    @Body() b: { kind?: OptionKind; label: string; startsAt?: string; endsAt?: string; place?: string; priceTier?: number },
+  ) {
+    return this.plans.addOption(id, { ...b, kind: b.kind ?? OptionKind.ACTIVITY });
+  }
+
+  @Delete("plans/:id/options/:optionId")
+  removeOption(@Param("id") id: string, @Param("optionId") optionId: string) {
+    return this.plans.removeOption(id, optionId);
   }
 
   @Post("plans/:id/votes")

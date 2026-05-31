@@ -93,6 +93,9 @@ body {
 }
 .btn:active { transform: scale(0.99); }
 .btn:disabled { opacity: 0.45; cursor: default; box-shadow: none; }
+.rsvp-grid { display: grid; gap: 9px; }
+.btn.secondary { color: var(--text); background: var(--surface); border: 1px solid var(--line-2); box-shadow: none; }
+.btn.selected { background: var(--accent); }
 .needs { color: var(--warn); font-family: var(--font-mono); font-size: 12px; }
 .foot { margin-top: 26px; color: var(--text-faint); font-size: 11.5px; text-align: center; font-family: var(--font-mono); }
 .err { color: var(--warn); }

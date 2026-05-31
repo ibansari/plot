@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		056A431EB34C7058BEF1F68A /* AuthViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89465146E357AE3C9E92C0E /* AuthViewModel.swift */; };
 		074B8DC27603F1D9E053106D /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39D6741973D2C50F6293DF7E /* MainTabView.swift */; };
+		0FB214C4C2CA38CF9B348144 /* IBMPlexMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 9E709B7EE6751F383AC9974A /* IBMPlexMono-Regular.ttf */; };
 		398B83D4530C2A6C3711489F /* DecisionCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BCBBEF26398DF81FF1FC088 /* DecisionCardView.swift */; };
 		3ECE3CCA5DF22F043826B281 /* MessageBubble.swift in Sources */ = {isa = PBXBuildFile; fileRef = 888771CFF161F21E30DBD5E2 /* MessageBubble.swift */; };
 		40988162264C812028D4771A /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = B97FF7F754AEE125D3B238CB /* Components.swift */; };
@@ -16,9 +17,14 @@
 		60D5D3AFDC73891C0D1E9A85 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5593EB7D34C7FBEF36B8D05B /* APIClient.swift */; };
 		7AEBF068CAE14EBFF812D171 /* SignInWithApple.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F1EE8801B59347C7537D81D /* SignInWithApple.swift */; };
 		7B7BE700DA7492BC4976E43B /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FEA32B7BED297B270C140E9 /* Models.swift */; };
+		7EB1C0C3BC0EB51FCE1E30F0 /* OFL-IBMPlexMono.txt in Resources */ = {isa = PBXBuildFile; fileRef = 6E38761CB522BF331B4B5019 /* OFL-IBMPlexMono.txt */; };
 		902931FE0459AFCB6CAF821C /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2FE72EE91C2819A6D9EBCD9 /* LoginView.swift */; };
 		91FE72E6E9FCF3DCF727BBD2 /* GroupsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E53D9F41A54091A115E3B0A8 /* GroupsViewModel.swift */; };
 		99A962FD96598B375A0A3A24 /* SocketClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6ADEC22FC350C89A28778FC5 /* SocketClient.swift */; };
+		A01D095AFE70B2B13592E05E /* OFL-SpaceGrotesk.txt in Resources */ = {isa = PBXBuildFile; fileRef = F2CCAA9C0A6516E38BED3E45 /* OFL-SpaceGrotesk.txt */; };
+		A2D2DF449131943C9D9E6ADC /* IBMPlexMono-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F1F5B94E4EF84E23FD54D37E /* IBMPlexMono-Medium.ttf */; };
+		A7436AFBE79DB19C06B213CD /* SpaceGrotesk-VF.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 93CAEA80922AA1196B3A2FBC /* SpaceGrotesk-VF.ttf */; };
+		ABF255C65EC13091384E448B /* OFL-Onest.txt in Resources */ = {isa = PBXBuildFile; fileRef = 988BC6316FFF804352346DF6 /* OFL-Onest.txt */; };
 		BBD9B6412A70ABA7A6FE6F56 /* EventKitService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3E5D2FF9C0F04CF0AA0086E /* EventKitService.swift */; };
 		CA2B944FA9F2240B430F399C /* AuditLogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 953528C48EB2B9B0246647B4 /* AuditLogView.swift */; };
 		CCB3FB493719F85C5783A709 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4692147728B75358956CD09F /* RootView.swift */; };
@@ -26,6 +32,7 @@
 		DF5469A50DD010176675BAAA /* PlotApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BB8DA3BD57B012EE59BB4C4 /* PlotApp.swift */; };
 		FAB064BFDDB8E8CCF65B8B0D /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40EC5552FBDEA836DABB2CBA /* Theme.swift */; };
 		FD05CF395A9E9BBC9E891176 /* ThreadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E2B5CF987B8724D6935C39D /* ThreadView.swift */; };
+		FEA6D6A24B4AB1D4024DF264 /* Onest-VF.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 8ED5A4C7E02F975F9AA20E91 /* Onest-VF.ttf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -37,12 +44,17 @@
 		5593EB7D34C7FBEF36B8D05B /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		5E1B10134A139D934B96F6EF /* ChatViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatViewModel.swift; sourceTree = "<group>"; };
 		6ADEC22FC350C89A28778FC5 /* SocketClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocketClient.swift; sourceTree = "<group>"; };
+		6E38761CB522BF331B4B5019 /* OFL-IBMPlexMono.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "OFL-IBMPlexMono.txt"; sourceTree = "<group>"; };
 		6F1EE8801B59347C7537D81D /* SignInWithApple.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInWithApple.swift; sourceTree = "<group>"; };
 		7BB8DA3BD57B012EE59BB4C4 /* PlotApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlotApp.swift; sourceTree = "<group>"; };
 		888771CFF161F21E30DBD5E2 /* MessageBubble.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageBubble.swift; sourceTree = "<group>"; };
 		8BCBBEF26398DF81FF1FC088 /* DecisionCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DecisionCardView.swift; sourceTree = "<group>"; };
+		8ED5A4C7E02F975F9AA20E91 /* Onest-VF.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Onest-VF.ttf"; sourceTree = "<group>"; };
 		8FEA32B7BED297B270C140E9 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		93CAEA80922AA1196B3A2FBC /* SpaceGrotesk-VF.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-VF.ttf"; sourceTree = "<group>"; };
 		953528C48EB2B9B0246647B4 /* AuditLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuditLogView.swift; sourceTree = "<group>"; };
+		988BC6316FFF804352346DF6 /* OFL-Onest.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "OFL-Onest.txt"; sourceTree = "<group>"; };
+		9E709B7EE6751F383AC9974A /* IBMPlexMono-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexMono-Regular.ttf"; sourceTree = "<group>"; };
 		AA05BA05D44FBD0C6F809397 /* Plot.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Plot.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B97FF7F754AEE125D3B238CB /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
 		C89465146E357AE3C9E92C0E /* AuthViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthViewModel.swift; sourceTree = "<group>"; };
@@ -50,6 +62,8 @@
 		D3E5D2FF9C0F04CF0AA0086E /* EventKitService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventKitService.swift; sourceTree = "<group>"; };
 		E2FE72EE91C2819A6D9EBCD9 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		E53D9F41A54091A115E3B0A8 /* GroupsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupsViewModel.swift; sourceTree = "<group>"; };
+		F1F5B94E4EF84E23FD54D37E /* IBMPlexMono-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexMono-Medium.ttf"; sourceTree = "<group>"; };
+		F2CCAA9C0A6516E38BED3E45 /* OFL-SpaceGrotesk.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "OFL-SpaceGrotesk.txt"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -128,10 +142,19 @@
 				691717C6497AA3F6CF2EAC91 /* DesignSystem */,
 				C934C96287F8B9A74E1536E7 /* Models */,
 				900D3E8E12992881E766E2FF /* Networking */,
+				A0C7C4E97D9CC8E0229B8A18 /* Resources */,
 				EB4B13E98F1B676DD2E07E83 /* ViewModels */,
 				5870E14CE741AE1E361732B9 /* Views */,
 			);
 			path = Plot;
+			sourceTree = "<group>";
+		};
+		A0C7C4E97D9CC8E0229B8A18 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				FF691D328A52F2850E9C5D68 /* Fonts */,
+			);
+			path = Resources;
 			sourceTree = "<group>";
 		};
 		C934C96287F8B9A74E1536E7 /* Models */ = {
@@ -152,6 +175,20 @@
 			path = ViewModels;
 			sourceTree = "<group>";
 		};
+		FF691D328A52F2850E9C5D68 /* Fonts */ = {
+			isa = PBXGroup;
+			children = (
+				F1F5B94E4EF84E23FD54D37E /* IBMPlexMono-Medium.ttf */,
+				9E709B7EE6751F383AC9974A /* IBMPlexMono-Regular.ttf */,
+				6E38761CB522BF331B4B5019 /* OFL-IBMPlexMono.txt */,
+				988BC6316FFF804352346DF6 /* OFL-Onest.txt */,
+				F2CCAA9C0A6516E38BED3E45 /* OFL-SpaceGrotesk.txt */,
+				8ED5A4C7E02F975F9AA20E91 /* Onest-VF.ttf */,
+				93CAEA80922AA1196B3A2FBC /* SpaceGrotesk-VF.ttf */,
+			);
+			path = Fonts;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -160,6 +197,7 @@
 			buildConfigurationList = 88FFD09A2DBD2761DB4F92FC /* Build configuration list for PBXNativeTarget "Plot" */;
 			buildPhases = (
 				4AFDBE61D2BA891FC87593AE /* Sources */,
+				9BE2E98558F4070A77BDC78F /* Resources */,
 			);
 			buildRules = (
 			);
@@ -204,6 +242,23 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		9BE2E98558F4070A77BDC78F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A2D2DF449131943C9D9E6ADC /* IBMPlexMono-Medium.ttf in Resources */,
+				0FB214C4C2CA38CF9B348144 /* IBMPlexMono-Regular.ttf in Resources */,
+				7EB1C0C3BC0EB51FCE1E30F0 /* OFL-IBMPlexMono.txt in Resources */,
+				ABF255C65EC13091384E448B /* OFL-Onest.txt in Resources */,
+				A01D095AFE70B2B13592E05E /* OFL-SpaceGrotesk.txt in Resources */,
+				FEA6D6A24B4AB1D4024DF264 /* Onest-VF.ttf in Resources */,
+				A7436AFBE79DB19C06B213CD /* SpaceGrotesk-VF.ttf in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		4AFDBE61D2BA891FC87593AE /* Sources */ = {

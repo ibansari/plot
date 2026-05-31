@@ -51,6 +51,8 @@ struct ThreadView: View {
     @ViewBuilder private func row(_ msg: Message) -> some View {
         if msg.kind == .DECISION_CARD, let pid = msg.planId {
             DecisionCardView(planId: pid, vm: vm)
+        } else if msg.metadata?.kind == "plot_suggestion" {
+            PlotSuggestionView(message: msg, vm: vm)
         } else {
             MessageBubble(message: msg, myUserId: vm.myUserId)
         }
@@ -81,7 +83,8 @@ struct ThreadView: View {
     private var statusLine: String {
         switch latestPlan?.state {
         case .LOCKED, .BOOKED: return "Plot locked the plan"
-        case .VOTING, .PROPOSED: return "Plot is gathering votes"
+        case .VOTING: return "Plot is gathering votes"
+        case .PROPOSED: return "Plot drafted some options"
         default: return "Plot's keeping an eye out"
         }
     }
@@ -143,5 +146,42 @@ struct ThreadView: View {
         .padding(.horizontal, 12).padding(.top, 10).padding(.bottom, 26)
         .background(Theme.bg.opacity(0.86))
         .overlay(Rectangle().fill(Theme.line).frame(height: 1), alignment: .top)
+    }
+}
+
+private struct PlotSuggestionView: View {
+    let message: Message
+    @Bindable var vm: ChatViewModel
+
+    private var status: String { message.metadata?.status ?? "open" }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 9) {
+            PlotMark(.s)
+            PlotCard {
+                VStack(alignment: .leading, spacing: 11) {
+                    Text(message.body).font(Theme.body(13.5, .semibold)).foregroundStyle(Theme.text)
+                    if status == "open" {
+                        HStack(spacing: 8) {
+                            Button { Task { await vm.actOnSuggestion(messageId: message.id, action: "draft_options") } } label: {
+                                Text("Draft options").font(Theme.body(12.5, .bold)).foregroundStyle(Theme.accentInk)
+                                    .frame(maxWidth: .infinity).padding(.vertical, 9).background(Theme.accent)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                            }
+                            Button { Task { await vm.actOnSuggestion(messageId: message.id, action: "dismiss") } } label: {
+                                Text("Not now").font(Theme.body(12.5, .bold)).foregroundStyle(Theme.textDim)
+                                    .frame(maxWidth: .infinity).padding(.vertical, 9)
+                                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.line2, lineWidth: 1))
+                            }
+                        }
+                    } else {
+                        Text(status == "accepted" ? "Drafting options…" : "No rush.")
+                            .font(Theme.mono(10.5)).foregroundStyle(Theme.textFaint)
+                    }
+                }
+                .padding(13)
+            }
+            Spacer(minLength: 12)
+        }
     }
 }

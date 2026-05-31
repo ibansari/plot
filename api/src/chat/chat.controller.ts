@@ -19,6 +19,17 @@ export class ChatController {
     return this.chat.postMessage(id, req.userId!, b.body);
   }
 
+  @UseGuards(AuthGuard)
+  @Post("threads/:id/plot-suggestions/:messageId/actions")
+  plotSuggestionAction(
+    @Param("id") id: string,
+    @Param("messageId") messageId: string,
+    @Req() req: AuthedRequest,
+    @Body() b: { action: "draft_options" | "dismiss" },
+  ) {
+    return this.chat.actOnPlotSuggestion(id, messageId, req.userId!, b.action);
+  }
+
   // ── internal (agent) ──
   @UseGuards(AuthGuard)
   @Get("internal/threads/:id/context")

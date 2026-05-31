@@ -27,6 +27,13 @@
 	</dict>
 	<key>NSCalendarsUsageDescription</key>
 	<string>Plot reads your free/busy times (never event details) to suggest when everyone can meet.</string>
+	<key>UIAppFonts</key>
+	<array>
+		<string>SpaceGrotesk-VF.ttf</string>
+		<string>Onest-VF.ttf</string>
+		<string>IBMPlexMono-Regular.ttf</string>
+		<string>IBMPlexMono-Medium.ttf</string>
+	</array>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchScreen</key>

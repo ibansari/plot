@@ -20,6 +20,12 @@ public enum MessageKind: String, Codable {
     case TEXT, SYSTEM, AGENT, DECISION_CARD
 }
 
+public struct MessageMetadata: Codable, Hashable {
+    public var kind: String?
+    public var status: String?
+    public var actions: [String]?
+}
+
 public struct Message: Codable, Identifiable, Hashable {
     public let id: String
     public let threadId: String
@@ -28,6 +34,7 @@ public struct Message: Codable, Identifiable, Hashable {
     public var authorId: String?
     public var authorName: String?
     public var planId: String?
+    public var metadata: MessageMetadata?
     public var createdAt: String
 
     public var isAgent: Bool { kind == .AGENT || kind == .DECISION_CARD }
@@ -87,6 +94,11 @@ public struct VoteTally: Codable, Hashable {
     public let down: Int
 }
 
+public struct ViewerVote: Codable, Hashable {
+    public let optionId: String
+    public let value: String
+}
+
 public struct RsvpEntry: Codable, Hashable {
     public let name: String
     public let status: String
@@ -110,6 +122,8 @@ public struct Plan: Codable, Identifiable, Hashable {
     public var spentCents: Int
     public var options: [PlanOption]
     public var votes: [VoteTally]
+    public var viewerVote: ViewerVote?
+    public var viewerRsvp: String?
     public var rsvps: [RsvpEntry]
     public var bringList: [BringItem]
     public var bookingRef: String?

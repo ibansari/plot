@@ -49,11 +49,19 @@ public final class ChatViewModel {
         case .message(let m):
             if !messages.contains(where: { $0.id == m.id }) { messages.append(m) }
             if let id = m.planId { Task { plans[id] = try? await api.plan(id) } }
+        case .messageUpdated(let m):
+            if let index = messages.firstIndex(where: { $0.id == m.id }) { messages[index] = m }
         case .planUpdated(let p):
-            plans[p.id] = p
+            var next = p
+            next.viewerVote = next.viewerVote ?? plans[p.id]?.viewerVote
+            next.viewerRsvp = next.viewerRsvp ?? plans[p.id]?.viewerRsvp
+            plans[p.id] = next
         case .auditCreated:
-            // refresh audit logs we're currently showing (AuditEntry carries no planId on the wire)
+            // an audit event means Plot acted on a plan (lock/book/undo/enact/split). Refresh both
+            // the audit log AND the plan state — some compensating actions broadcast only an id,
+            // so re-fetch the full plan to keep status/spend/booking current.
             for id in audits.keys { Task { await loadAudit(planId: id) } }
+            for id in plans.keys { Task { plans[id] = try? await api.plan(id) } }
         }
     }
 
@@ -67,6 +75,33 @@ public final class ChatViewModel {
 
     public func vote(planId: String, optionId: String, value: String = "UP") async {
         do { plans[planId] = try await api.vote(planId: planId, optionId: optionId, value: value) }
+        catch { self.error = "\(error)" }
+    }
+
+    public func actOnSuggestion(messageId: String, action: String) async {
+        do {
+            let updated = try await api.actOnPlotSuggestion(threadId: threadId, messageId: messageId, action: action)
+            if let index = messages.firstIndex(where: { $0.id == messageId }) { messages[index] = updated }
+        } catch { self.error = "\(error)" }
+    }
+
+    public func startVote(planId: String) async {
+        do { plans[planId] = try await api.startVote(planId: planId) }
+        catch { self.error = "\(error)" }
+    }
+
+    public func addOption(planId: String, label: String) async {
+        do { plans[planId] = try await api.addOption(planId: planId, label: label) }
+        catch { self.error = "\(error)" }
+    }
+
+    public func removeOption(planId: String, optionId: String) async {
+        do { plans[planId] = try await api.removeOption(planId: planId, optionId: optionId) }
+        catch { self.error = "\(error)" }
+    }
+
+    public func rsvp(planId: String, status: String) async {
+        do { plans[planId] = try await api.rsvp(planId: planId, status: status) }
         catch { self.error = "\(error)" }
     }
 

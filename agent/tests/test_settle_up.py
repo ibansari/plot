@@ -45,6 +45,9 @@ class SplitApi:
     def remember_constraint(self, **k):
         return {"remembered": True}
 
+    def get_plan(self, **k):
+        return {}
+
 
 def _state(has_cost=True, tier=3):
     return {"thread_id": "t1", "plan_id": "p1", "leader_has_cost": has_cost,

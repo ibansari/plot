@@ -19,7 +19,7 @@ from . import config
 class AgentState(TypedDict, total=False):
     thread_id: str
     plan_id: Optional[str]
-    trigger: str  # "message" | "deadline"
+    trigger: str  # "message" | "confirmed_intent" | "deadline"
     context: dict
     remembered: dict
     intent: dict
@@ -61,10 +61,9 @@ def build_graph(nodes: AgentNodes | None = None):
     g.add_node("remember", n.remember)
     g.add_node("detect_intent", n.detect_intent)
     g.add_node("stay_quiet", n.stay_quiet)
-    g.add_node("ask", n.ask)
-    g.add_node("gather_availability", n.gather_availability)
-    g.add_node("research", n.research)
-    g.add_node("propose_decision", n.propose_decision)
+    g.add_node("suggest_plan", n.suggest_plan)
+    g.add_node("agent_loop", n.agent_loop)
+    # deadline / money path — trust-critical, kept exactly as-is
     g.add_node("act_or_ask", n.act_or_ask)
     g.add_node("act", n.act)
     g.add_node("settle_up", n.settle_up)
@@ -74,26 +73,29 @@ def build_graph(nodes: AgentNodes | None = None):
     g.add_conditional_edges(
         "dispatch",
         lambda s: "deadline" if s.get("trigger") == "deadline" else "intent",
-        {"deadline": "act_or_ask", "intent": "remember"},
+        {"deadline": "act_or_ask", "intent": "detect_intent"},
     )
-    # message path: learn any stated constraint first, then classify intent
-    g.add_edge("remember", "detect_intent")
+    # message path: a cheap structured read gates banter (silence == no action), persists any stated
+    # constraint, then hands ACT/ASK to the agentic loop where Claude chooses tools freely.
+    g.add_edge("detect_intent", "remember")
     g.add_conditional_edges(
-        "detect_intent",
-        lambda s: s["intent"]["decision"],
-        {"STAY_QUIET": "stay_quiet", "ASK": "ask", "ACT": "gather_availability"},
+        "remember",
+        n.route_after_remember,
+        {"quiet": "stay_quiet", "suggest": "suggest_plan", "loop": "agent_loop"},
     )
-    g.add_edge("gather_availability", "research")
-    g.add_edge("research", "propose_decision")
-    g.add_edge("propose_decision", END)
+    g.add_edge("agent_loop", END)
     g.add_edge("stay_quiet", END)
-    g.add_edge("ask", END)
+    g.add_edge("suggest_plan", END)
     g.add_conditional_edges(
         "act_or_ask",
         lambda s: s.get("act_decision", "act"),
         {"act": "act", "approve": "human_approval"},
     )
-    g.add_edge("act", "settle_up")
+    g.add_conditional_edges(
+        "act",
+        lambda s: "settle" if s.get("result") == "LOCKED" else "done",
+        {"settle": "settle_up", "done": END},
+    )
     g.add_edge("settle_up", END)
     g.add_edge("human_approval", END)
 

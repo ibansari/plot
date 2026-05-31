@@ -12,8 +12,9 @@ describe("PlanService contingencies", () => {
     const audit: any = { record: jest.fn(async () => ({})) };
     const realtime: any = { emitToThread: jest.fn() };
     const inngest: any = { send: jest.fn() };
+    const recall: any = { remember: jest.fn(async () => ({})), recall: jest.fn(async () => []) };
     const booking: any = { book: jest.fn() };
-    const svc = new PlanService(prisma, audit, realtime, inngest, booking);
+    const svc = new PlanService(prisma, audit, realtime, inngest, recall, booking);
     return { svc, prisma, audit, realtime };
   }
 

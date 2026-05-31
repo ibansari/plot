@@ -1,4 +1,4 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import axios from "axios";
 import { PrismaService } from "../common/prisma.service";
 import { RealtimeGateway } from "../common/realtime.gateway";
@@ -55,6 +55,26 @@ export class ChatService {
     return dto;
   }
 
+  async actOnPlotSuggestion(threadId: string, messageId: string, userId: string, action: "draft_options" | "dismiss") {
+    const message = await this.prisma.message.findFirstOrThrow({
+      where: { id: messageId, threadId, kind: MessageKind.AGENT },
+      include: { author: true },
+    });
+    const metadata = ((message.metadata as Record<string, unknown> | null) ?? {});
+    if (metadata.kind !== "plot_suggestion") throw new BadRequestException("message is not a Plot suggestion");
+    if (metadata.status && metadata.status !== "open") throw new BadRequestException("suggestion already handled");
+
+    const updated = await this.prisma.message.update({
+      where: { id: messageId },
+      data: { metadata: { ...metadata, status: action === "draft_options" ? "accepted" : "dismissed", actedBy: userId } },
+      include: { author: true },
+    });
+    const dto = this.toDto(updated);
+    this.realtime.emitToThread(threadId, "message.updated", dto);
+    if (action === "draft_options") this.triggerAgent(threadId, "confirmed_intent");
+    return dto;
+  }
+
   // Context bundle the agent's graph reads at the start of a run.
   async context(threadId: string) {
     const thread = await this.prisma.thread.findUniqueOrThrow({ where: { id: threadId } });
@@ -93,9 +113,9 @@ export class ChatService {
     };
   }
 
-  private async triggerAgent(threadId: string) {
+  private async triggerAgent(threadId: string, trigger = "message") {
     try {
-      await axios.post(`${config.agentBaseUrl}/run`, { threadId, trigger: "message" }, { timeout: 30_000 });
+      await axios.post(`${config.agentBaseUrl}/run`, { threadId, trigger }, { timeout: 30_000 });
     } catch (e) {
       // graceful: chat still works if the agent service is down; it just won't respond.
       this.log.warn(`agent trigger failed (chat continues): ${(e as Error).message}`);

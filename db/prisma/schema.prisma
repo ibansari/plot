@@ -320,6 +320,40 @@ model AvailabilityWindow {
   @@index([userId, startsAt])
 }
 
+// A real venue catalog the Places connector searches (no external API key in dev). Real
+// Google/Foursquare results would upsert into this same table behind the CalendarProvider seam.
+model Place {
+  id        String   @id @default(cuid())
+  name      String
+  address   String
+  priceTier Int      @default(2) // 1..4
+  capacity  Int      @default(40) // seats/slots — the real reservation engine books against this
+  phone     String?  // enables tap-to-call booking degradation
+  url       String?  // enables deep-link degradation
+  tags      String[] // dinner, drinks, outdoor, casual, ...
+  lat       Float?
+  lng       Float?
+  createdAt DateTime @default(now())
+
+  @@index([name])
+}
+
+// Real reservations made by the internal booking engine: capacity + overlap conflict checks,
+// not an external partner. A confirmed row is the venue's record; bookingRef on the plan = code.
+model Reservation {
+  id           String   @id @default(cuid())
+  placeName    String
+  planId       String?
+  startsAt     DateTime
+  endsAt       DateTime
+  partySize    Int
+  confirmation String   @unique
+  status       String   @default("CONFIRMED") // CONFIRMED | CANCELLED
+  createdAt    DateTime @default(now())
+
+  @@index([placeName, startsAt])
+}
+
 // ───────────────────────── trust / audit (§13) ─────────────────────────
 
 model Permission {

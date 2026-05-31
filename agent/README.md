@@ -3,36 +3,54 @@
 A separate Python service. The API triggers `POST /run` on every human message; Inngest re-enters
 `POST /run` with `trigger="deadline"` at the soft deadline to auto-lock.
 
-## Graph (PRD §9)
+## Architecture — Claude drives an agentic tool-use loop
 
 ```
-message:   dispatch → remember → detect-intent ─┬─ stay-quiet
-                                                ├─ ask
-                                                └─ gather-availability → research → propose-decision
+message:   dispatch → detect-intent → remember ─┬─ stay-quiet        (banter → silence, cheap gate)
+                                                └─ AGENT LOOP ─▶ END   (Claude picks tools freely)
 deadline:  dispatch → act-or-ask ─┬─ act → settle-up        (auto-lock leader, then offer a split)
                                   └─ human-approval         (over-cap / irreversible)
 ```
 
-`detect-intent` decides **ACT / STAY_QUIET / ASK**. With `ANTHROPIC_API_KEY` set it's Claude
-tool-use; with no key it's a deterministic keyword classifier (`llm.py`) — same output shape, so
-the whole slice runs offline.
+The message path is **not a fixed pipeline**. A cheap structured call gates banter (silence costs
+one small classification, never the loop) and captures any stated constraint; everything else enters
+**`loop.py:AgentLoop`**, where Claude (`claude-opus-4-8`, tool use) sees the live thread + the group's
+constraints + a real toolset and **decides which tools to call and in what order** — so "sushi
+tonight", an open question, and a multi-turn trip/itinerary discussion all run through the same loop.
 
-**What Plot reasons about (all pure + unit-tested, so the intelligence runs offline):**
+**Tools Claude has (`tools.py`, Anthropic tool-use schemas):** `gather_availability` (Claude picks the
+window), `research_places` (live OSM; called once per kind of place), `get_plan` (read state),
+`propose_plan` (open a votable decision; the loop auto-invites non-users), `post_message` (the only
+speech channel — clarifying Qs, nudges), `finish_turn` (explicit stop; default silence). On an
+uninvited **proactive** turn the dispatcher physically withholds mutating tools (allowlist), so Plot
+can suggest but never commit.
 
-- **`remember` (§A7)** — silently learns a constraint a member states in chat ("I'm vegetarian
-  now", "I'm broke this month" → expires), persisting it to their membership. Never speaks.
-- **Constraint memory + fit rationale (`constraints.py`, §A2/§A7)** — each proposed option carries
-  a *"why it fits this group"* line referencing a real constraint, poor fits are **flagged** with a
-  reason, a hard-disliked place is **silently dropped**, and options are ranked best-fit-first.
-- **Proposal voice + decision method (`summary.py`, §A2/§A3)** — picks boost/veto vs ranked by
-  option count and writes the decision-card body so the group sees Plot's reasoning, not a generic card.
-- **`settle-up` (§B1)** — after a costed lock, sets up an even split; money is least-authority, so
-  without the `SPEND_MONEY` grant it asks in-thread instead of moving money.
+**The brain (`brain.py`).** Two SDK seams, both `claude-opus-4-8` with a cached persona prompt:
+`run_loop_step` (the tool-use loop) and `messages.parse`+Pydantic for the structured `analyze_message`
+(banter gate + constraint extraction) and `reason_about_options` (deterministic-fallback ranking).
+Both seams are injectable, so the whole agent — loop included — is unit-tested offline with a fake.
 
-Every tool goes through the typed registry (`tools.py`), which **checks permission / spend-cap
-BEFORE** running; irreversible or over-cap calls raise `ApprovalRequired` → the graph's
-`human-approval` node. The **audit row is written AFTER**, server-side, by the API endpoint each
-tool calls — so an action and its audit are inseparable.
+**Trust is unchanged — it never lived in the graph topology.** Every tool the loop calls still flows
+through `ToolRegistry.invoke()` (permission / spend-cap / irreversible gate **BEFORE**; an over-cap or
+irreversible call raises `ApprovalRequired`, which the loop converts to a "blocked — needs approval"
+tool result Claude cannot act around) and the API writes the audit row **AFTER**. Hard stops
+(`MAX_STEPS`, per-turn mutating ceilings) are enforced in `loop.py`, never by trusting the model. The
+trust-critical **deadline/money path is kept verbatim**.
+
+Requires `ANTHROPIC_API_KEY`. With no key (or on an API error) the loop falls back to the deterministic
+gather→research→propose path — the agent never crashes and never acts un-gated.
+
+## MCP — pull in real capabilities (`mcp_bridge.py`)
+
+Plot can connect to **MCP servers** (Google Calendar, Google Maps, Resy/OpenTable, Ticketmaster…) and
+expose their tools to the loop. Set `PLOT_MCP_SERVERS` (JSON; see `.env.example`) and `pip install
+plot-agent[mcp]`. Each server is connected once at startup; its tools are registered into the **same
+`ToolRegistry`**, so they flow through the trust gate: a tool named in the server's `mutating` list
+(`book_reservation`, `create-event`, `pay`) is registered **irreversible → human-approval**; every
+other (read) tool is offered to the loop directly (and withheld on proactive turns). Claude then calls
+them like any built-in tool. Nothing is configured by default — the agent is unchanged until you opt
+in. Verified live against the reference `@modelcontextprotocol/server-everything` server; the
+domain servers above just need their credentials in the config.
 
 ## Run
 

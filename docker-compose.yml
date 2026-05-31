@@ -31,5 +31,17 @@ services:
     extra_hosts: ["host.docker.internal:host-gateway"]
     depends_on: [postgres, redis]
 
+  # Stripe's OFFICIAL local server — the real Stripe Node SDK talks to it over the real Stripe API
+  # with NO paid account/key. PAYMENT_PROVIDER=stripe + STRIPE_API_BASE=http://localhost:12111.
+  stripe-mock:
+    image: stripe/stripe-mock:latest
+    ports: ["12111:12111", "12112:12112"]
+
+  # Mailpit — a real SMTP server + inbox UI. SmtpComms sends real email over SMTP (no account).
+  # COMMS_PROVIDER=smtp; non-user invites are delivered for real and viewable at http://localhost:8025.
+  mailpit:
+    image: axllent/mailpit:latest
+    ports: ["1025:1025", "8025:8025"]
+
 volumes:
   pgdata:

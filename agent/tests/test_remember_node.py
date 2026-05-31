@@ -1,11 +1,20 @@
-"""The remember node resolves the speaker to a member and silently persists a stated constraint
-(PRD §A7). It never posts to the thread. No network — a fake API captures the persist call."""
+"""Adaptive constraint capture (PRD §A7): detect_intent (via the brain) extracts a stated constraint
+and attaches the speaker; remember resolves the member and silently persists it. No network."""
 import os
 
 os.environ.pop("ANTHROPIC_API_KEY", None)
 os.environ["PLOT_DEMO_NOW_ISO"] = "2026-06-05T18:00:00.000Z"
 
 from plot_agent.nodes import AgentNodes
+from plot_agent.brain import MessageAnalysis, StatedConstraint
+
+
+class StubBrain:
+    def __init__(self, analysis):
+        self._analysis = analysis
+
+    def analyze_message(self, messages):
+        return self._analysis
 
 
 class RememberApi:
@@ -29,6 +38,7 @@ class RememberApi:
     def invite_non_user(self, **k): return {}
     def lock(self, **k): return {}
     def create_split(self, **k): return {"created": True, "split": {"perHeadCents": 0}}
+    def get_plan(self, **k): return {}
 
 
 def _ctx(body, author):
@@ -42,24 +52,41 @@ def _ctx(body, author):
     }
 
 
-def test_remembers_and_resolves_user():
+def _nodes(api, analysis):
+    return AgentNodes(api=api, brain=StubBrain(analysis))
+
+
+def test_detect_then_remember_resolves_user():
+    analysis = MessageAnalysis(decision="STAY_QUIET",
+                               constraint=StatedConstraint(text="gluten-free", kind="dietary", temporary=False))
     api = RememberApi()
-    out = AgentNodes(api=api).remember({"thread_id": "t", "context": _ctx("I'm gluten-free now", "Sam")})
+    nodes = _nodes(api, analysis)
+    state = {"thread_id": "t", "context": _ctx("I'm gluten-free now", "Sam")}
+    state.update(nodes.detect_intent(state))         # sets stated_constraint (member=Sam)
+    out = nodes.remember(state)
     assert api.calls and api.calls[0]["user_id"] == "u_sam"
-    assert api.calls[0]["kind"] == "dietary"
+    assert api.calls[0]["kind"] == "dietary" and api.calls[0]["expires_at"] is None
     assert out["remembered"]["member"] == "Sam"
     assert api.messages == []  # silent — memory only
 
 
-def test_resolves_non_user_contact_and_expiry():
+def test_temporary_constraint_gets_expiry_and_non_user():
+    analysis = MessageAnalysis(decision="STAY_QUIET",
+                               constraint=StatedConstraint(text="broke this month", kind="budget", temporary=True))
     api = RememberApi()
-    AgentNodes(api=api).remember({"thread_id": "t", "context": _ctx("ugh I'm broke this month", "Jordan")})
+    nodes = _nodes(api, analysis)
+    state = {"thread_id": "t", "context": _ctx("ugh I'm broke this month", "Jordan")}
+    state.update(nodes.detect_intent(state))
+    nodes.remember(state)
     assert api.calls[0]["contact_id"] == "c_jordan"
-    assert api.calls[0]["expires_at"] is not None
+    assert api.calls[0]["expires_at"] is not None  # temporary → expiry set
 
 
 def test_no_constraint_no_call():
+    analysis = MessageAnalysis(decision="STAY_QUIET", constraint=None)
     api = RememberApi()
-    out = AgentNodes(api=api).remember({"thread_id": "t", "context": _ctx("haha that was a great game", "Sam")})
-    assert api.calls == []
-    assert out == {}
+    nodes = _nodes(api, analysis)
+    state = {"thread_id": "t", "context": _ctx("haha great game", "Sam")}
+    state.update(nodes.detect_intent(state))
+    out = nodes.remember(state)
+    assert api.calls == [] and out == {}

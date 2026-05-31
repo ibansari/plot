@@ -6,7 +6,7 @@ const API = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000";
 
 type Option = { id: string; kind: string; label: string; startsAt?: string; place?: string; priceTier?: number };
 type VoteTally = { optionId: string; up: number; down: number };
-type Plan = { id: string; title: string; state: string; options: Option[]; votes: VoteTally[]; lockedOptionId?: string };
+type Plan = { id: string; title: string; state: string; options: Option[]; votes: VoteTally[]; lockedOptionId?: string; viewerRsvp?: string };
 type PageData = { purpose: string; contactName: string; plan: Plan };
 
 function fmtTime(iso?: string) {
@@ -24,13 +24,16 @@ export default function VotePage() {
   const [data, setData] = useState<PageData | null>(null);
   const [err, setErr] = useState<string>("");
   const [picked, setPicked] = useState<string>("");
+  const [rsvp, setRsvp] = useState<string>("");
   const [submitted, setSubmitted] = useState(false);
 
   const load = useCallback(async () => {
     try {
       const res = await fetch(`${API}/public/tokens/${token}?s=${encodeURIComponent(sig)}`);
       if (!res.ok) throw new Error((await res.json()).message ?? "link invalid");
-      setData(await res.json());
+      const next = await res.json();
+      setData(next);
+      setRsvp(next.plan.viewerRsvp ?? "");
     } catch (e) {
       setErr((e as Error).message);
     }
@@ -40,7 +43,7 @@ export default function VotePage() {
     load();
   }, [load]);
 
-  async function submit() {
+  async function submitVote() {
     if (!picked) return;
     const res = await fetch(`${API}/public/tokens/${token}/vote`, {
       method: "POST",
@@ -56,6 +59,21 @@ export default function VotePage() {
     }
   }
 
+  async function submitRsvp(status: "YES" | "MAYBE" | "NO") {
+    const res = await fetch(`${API}/public/tokens/${token}/rsvp`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ s: sig, status }),
+    });
+    if (res.ok) {
+      setRsvp(status);
+      setSubmitted(true);
+      load();
+    } else {
+      setErr((await res.json()).message ?? "could not record RSVP");
+    }
+  }
+
   if (err) {
     return (
       <div className="wrap">
@@ -67,26 +85,32 @@ export default function VotePage() {
   }
   if (!data) return <div className="wrap"><p className="sub">Loading…</p></div>;
 
-  const { plan, contactName } = data;
+  const { plan, contactName, purpose } = data;
   const tallyOf = (id: string) => plan.votes.find((v) => v.optionId === id);
   const locked = plan.state === "LOCKED" || plan.state === "BOOKED";
+  const isRsvp = purpose === "rsvp";
+  const canVote = plan.state === "VOTING";
 
   return (
     <div className="wrap">
       <div className="eyebrow"><span className="mark">✦</span> Plot · for {contactName}</div>
       <h1 className="title">{plan.title}</h1>
       <p className="sub">
-        {locked ? "This plan is locked in." : "The crew is deciding. Tap your pick, then submit — no app needed."}
+        {isRsvp
+          ? "The plan is locked in. Let the group know whether you can make it."
+          : locked ? "This plan is locked in."
+            : canVote ? "The crew is deciding. Tap your pick, then submit — no app needed."
+              : "The crew is shaping the options. This link will be ready as soon as voting opens."}
       </p>
 
-      {plan.options.map((o) => {
+      {!isRsvp && plan.options.map((o) => {
         const t = tallyOf(o.id);
         const isLeader = plan.lockedOptionId === o.id;
         return (
           <div
             key={o.id}
             className={`card option ${picked === o.id ? "picked" : ""} ${isLeader ? "locked" : ""}`}
-            onClick={() => !locked && setPicked(o.id)}
+            onClick={() => canVote && setPicked(o.id)}
           >
             <div>
               <div className="label">{o.label} {isLeader ? "✓" : ""}</div>
@@ -99,13 +123,20 @@ export default function VotePage() {
         );
       })}
 
-      {!locked && (
-        <button className="btn" disabled={!picked || submitted} onClick={submit}>
+      {!isRsvp && canVote && (
+        <button className="btn" disabled={!picked || submitted} onClick={submitVote}>
           {submitted ? "Vote recorded ✓" : "Submit my vote"}
         </button>
       )}
-      {submitted && <p className="foot">Thanks — your vote was sent back to the group in real time.</p>}
-      <p className="foot">Powered by Plot · you’re voting as a guest over a secure link</p>
+      {isRsvp && (
+        <div className="rsvp-grid">
+          <button className={`btn ${rsvp === "YES" ? "selected" : "secondary"}`} onClick={() => submitRsvp("YES")}>I&apos;m in</button>
+          <button className={`btn ${rsvp === "MAYBE" ? "selected" : "secondary"}`} onClick={() => submitRsvp("MAYBE")}>Maybe</button>
+          <button className={`btn ${rsvp === "NO" ? "selected" : "secondary"}`} onClick={() => submitRsvp("NO")}>Can&apos;t make it</button>
+        </div>
+      )}
+      {submitted && <p className="foot">Thanks — your {isRsvp ? "RSVP" : "vote"} was sent back to the group in real time.</p>}
+      <p className="foot">Powered by Plot · you&apos;re responding as a guest over a secure link</p>
     </div>
   );
 }

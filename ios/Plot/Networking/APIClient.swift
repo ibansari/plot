@@ -70,9 +70,21 @@ public actor APIClient {
     public func postMessage(threadId: String, body: String) async throws -> Message {
         try await post("/threads/\(threadId)/messages", body: ["body": body])
     }
+    public func actOnPlotSuggestion(threadId: String, messageId: String, action: String) async throws -> Message {
+        try await post("/threads/\(threadId)/plot-suggestions/\(messageId)/actions", body: ["action": action])
+    }
 
     // MARK: - Plan
     public func plan(_ id: String) async throws -> Plan { try await get("/plans/\(id)") }
+    public func startVote(planId: String) async throws -> Plan {
+        try await post("/plans/\(planId)/start-vote", body: [String: String]())
+    }
+    public func addOption(planId: String, label: String) async throws -> Plan {
+        try await post("/plans/\(planId)/options", body: ["kind": "ACTIVITY", "label": label])
+    }
+    public func removeOption(planId: String, optionId: String) async throws -> Plan {
+        try await delete("/plans/\(planId)/options/\(optionId)")
+    }
     public func vote(planId: String, optionId: String, value: String = "UP") async throws -> Plan {
         try await post("/plans/\(planId)/votes", body: ["optionId": optionId, "value": value])
     }
@@ -110,6 +122,9 @@ public actor APIClient {
     }
     private func put<T: Decodable, B: Encodable>(_ path: String, body: B) async throws -> T {
         try await send(path, method: "PUT", body: body)
+    }
+    private func delete<T: Decodable>(_ path: String) async throws -> T {
+        try await send(path, method: "DELETE", body: Optional<[String: String]>.none)
     }
     private func send<T: Decodable, B: Encodable>(_ path: String, method: String, body: B?) async throws -> T {
         var req = URLRequest(url: base.appendingPathComponent(path))

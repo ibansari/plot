@@ -17,13 +17,13 @@ struct PlotDeskView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     header
-                    Text("The plan running quietly under the chat. Live state, contingencies, and a log of everything Plot did — each item reversible.")
+                    Text("A simple timeline of how the plan came together, with the useful details kept close.")
                         .font(Theme.body(12.5)).foregroundStyle(Theme.textDim)
                         .padding(.bottom, 16)
 
                     deskStats
                     contingencies
-                    SectionLabel("Activity log · everything's reversible").padding(.top, 18).padding(.bottom, 6)
+                    SectionLabel("Timeline").padding(.top, 18).padding(.bottom, 6)
                     activityLog
                     overCap
                     Spacer(minLength: 24)
@@ -103,7 +103,8 @@ struct PlotDeskView: View {
                         Image(systemName: icon(e.action)).font(.system(size: 13)).foregroundStyle(Theme.accent)
                     }.frame(width: 30, height: 30)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(e.summary).font(Theme.body(13, .semibold)).foregroundStyle(Theme.text)
+                        Text(timelineTitle(e.action)).font(Theme.body(13, .semibold)).foregroundStyle(Theme.text)
+                        Text(e.summary).font(Theme.body(11.5)).foregroundStyle(Theme.textDim)
                         Text("\(e.actor) · \(relative(e.createdAt))\(e.amountCents > 0 ? " · $\(e.amountCents/100)" : "")")
                             .font(Theme.mono(10.5)).foregroundStyle(Theme.textFaint)
                     }
@@ -159,11 +160,30 @@ struct PlotDeskView: View {
         case "AGENT_GENERATED_BRINGLIST": return "list.bullet"
         case "AGENT_SENT_NONUSER_INVITE": return "message.fill"
         case "AGENT_PROPOSED_PLAN": return "sparkles"
+        case "AGENT_OPENED_VOTING": return "hand.raised.fill"
+        case "AGENT_REQUESTED_APPROVAL": return "person.2.fill"
         case "AGENT_GATHERED_AVAILABILITY": return "calendar"
         case "AGENT_RESEARCHED_PLACES": return "mappin.and.ellipse"
         case "PLAN_UNLOCKED": return "arrow.uturn.backward"
         default: return "circle.fill"
         }
+    }
+    private func timelineTitle(_ action: String) -> String {
+        switch action {
+        case "AGENT_GATHERED_AVAILABILITY": return "Checked availability"
+        case "AGENT_RESEARCHED_PLACES": return "Looked up a few places"
+        case "AGENT_PROPOSED_PLAN": return "Drafted options"
+        case "AGENT_OPENED_VOTING": return "Opened voting"
+        case "AGENT_SENT_NONUSER_INVITE": return "Texted a guest"
+        case "AGENT_REQUESTED_APPROVAL": return "Asked the group to weigh in"
+        case "AGENT_LOCKED_PLAN": return "Locked the plan"
+        case "AGENT_GENERATED_BRINGLIST": return "Sorted the bring-list"
+        case "PLAN_UNLOCKED": return "Reopened the plan"
+        default: return eponym(action)
+        }
+    }
+    private func eponym(_ action: String) -> String {
+        action.replacingOccurrences(of: "_", with: " ").capitalized
     }
     private func relative(_ iso: String) -> String {
         guard let d = parseDate(iso) else { return "" }

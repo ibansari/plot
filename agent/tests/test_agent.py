@@ -1,40 +1,10 @@
-"""Agent slice tests: intent routing (act / stay-quiet / ask), option building, and the
-spend-cap gate that pauses for human approval. No network required (deterministic fallback)."""
+"""Agent slice tests: option assembly and the spend-cap gate that pauses for human approval.
+Intent/constraint reasoning is the LLM brain's job — covered in test_brain.py with a fake parser.
+No network required."""
 import os
-# ensure deterministic (no Claude) path
 os.environ.pop("ANTHROPIC_API_KEY", None)
 
-from plot_agent.llm import classify_intent
 from plot_agent.tools import ToolRegistry, ApprovalRequired, build_decision_options
-
-
-def msgs(*bodies):
-    return [{"authorName": "Someone", "body": b, "isAgent": False} for b in bodies]
-
-
-# ── detect-intent ──
-
-def test_stay_quiet_on_banter():
-    r = classify_intent(msgs("lol did everyone see the game", "Leo still owes me $5 😤"))
-    assert r.decision == "STAY_QUIET"
-
-
-def test_act_on_clear_plan():
-    r = classify_intent(msgs("we should grab dinner friday night"))
-    assert r.decision == "ACT"
-    assert r.activity == "dinner"
-    assert r.time_hint
-
-
-def test_ask_when_underspecified():
-    r = classify_intent(msgs("we should hang out sometime"))
-    assert r.decision == "ASK"
-    assert r.question
-
-
-def test_act_with_time_only_defaults_activity():
-    r = classify_intent(msgs("let's do something this weekend"))
-    assert r.decision == "ACT"
 
 
 # ── propose: mixed options ──
@@ -93,6 +63,9 @@ class FakeApi:
 
     def remember_constraint(self, **k):
         return {"remembered": True}
+
+    def get_plan(self, **k):
+        return {}
 
 
 def test_over_cap_routes_to_approval():

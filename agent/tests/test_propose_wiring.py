@@ -7,6 +7,27 @@ os.environ.pop("ANTHROPIC_API_KEY", None)
 os.environ["PLOT_DEMO_NOW_ISO"] = "2026-06-05T18:00:00.000Z"  # before Jordan's budget expiry
 
 from plot_agent.nodes import AgentNodes
+from plot_agent.brain import ProposalReasoning, OptionAssessment
+
+
+class StubBrain:
+    """Stands in for the LLM: assesses the actually-assembled options (best-fit Thai, flagged Lucia)."""
+
+    def reason_about_options(self, activity, time_hint, options, constraints):
+        assessments = []
+        for o in options:
+            place = o.get("place", "")
+            if "Ananda" in place:
+                assessments.append(OptionAssessment(label=o["label"], why="gluten-free options for Sam; cheap-ish for Jordan", fit=5))
+            elif "Lucia" in place:
+                assessments.append(OptionAssessment(label=o["label"], why="a treat", flags=["over Jordan's budget ($$$$)"], fit=-2))
+            else:
+                assessments.append(OptionAssessment(label=o["label"], why="an easy option", fit=0))
+        return ProposalReasoning(
+            method="ranked",
+            summary="✦ Found a couple of dinner options for friday night. My pick: Ananda Thai — gluten-free options for Sam; cheap-ish for Jordan.",
+            assessments=assessments,
+        )
 
 
 class CaptureApi:
@@ -39,10 +60,13 @@ class CaptureApi:
     def remember_constraint(self, **k):
         return {"remembered": True}
 
+    def get_plan(self, **k):
+        return {}
+
 
 def test_propose_threads_constraints_into_options():
     api = CaptureApi()
-    nodes = AgentNodes(api=api)
+    nodes = AgentNodes(api=api, brain=StubBrain())
     state = {
         "thread_id": "t_crew",
         "context": {
