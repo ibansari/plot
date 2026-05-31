@@ -182,8 +182,23 @@ async function main() {
     });
   }
 
+  // ── curated MCP connector catalog (spec §Connector Catalog) — extensible; trust-tiered ──
+  const catalog: Array<{ key: string; displayName: string; category: string; trustTier: string; sourceUrl?: string; rendererHint?: string }> = [
+    { key: "google-calendar", displayName: "Google Calendar", category: "core", trustTier: "official", sourceUrl: "https://github.com/google/mcp", rendererHint: "SCHEDULE" },
+    { key: "google-maps", displayName: "Google Maps", category: "core", trustTier: "official", sourceUrl: "https://github.com/modelcontextprotocol/servers", rendererHint: "MAP" },
+    { key: "weatherkit", displayName: "WeatherKit", category: "core", trustTier: "official", sourceUrl: "https://developer.apple.com/weatherkit/", rendererHint: "WEATHER" },
+    { key: "resy", displayName: "Resy / OpenTable", category: "going_out", trustTier: "community", sourceUrl: "https://github.com/jrklein343-svg/restaurant-mcp", rendererHint: "LIST" },
+    { key: "ticketmaster", displayName: "Ticketmaster", category: "going_out", trustTier: "community", sourceUrl: "https://www.pulsemcp.com/servers/ticketmaster-live-events", rendererHint: "LIST" },
+    { key: "flights", displayName: "Flights", category: "trips", trustTier: "community", rendererHint: "ITINERARY" },
+    { key: "lodging", displayName: "Lodging", category: "trips", trustTier: "community", rendererHint: "LIST" },
+  ];
+  for (const c of catalog) {
+    await prisma.connectorCatalogEntry.upsert({ where: { key: c.key }, update: c, create: c });
+  }
+
   console.log("✦ Seeded The Crew:");
   console.log("  group   g_crew  thread t_crew");
+  console.log(`  connector catalog: ${catalog.length} entries (core/going_out/trips)`);
   console.log("  users   Alex(organizer) Max Sam Priya");
   console.log("  contact Jordan (+15550000005, non-user via SMS)");
   console.log("  3 banter messages, busy/free windows, granted permissions.");
