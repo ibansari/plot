@@ -13,6 +13,7 @@ from plot_agent.mcp_bridge import register_mcp_tools
 
 
 class FakeApi:
+    def maps_feasibility(self, **k): return {"status": "DEGRADED", "candidates": []}
     def get_plan(self, **k):
         return {}
     # registry binds these at construction

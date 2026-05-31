@@ -100,6 +100,15 @@ class ToolRegistry:
             loop=True, proactive=True,
         ))
         self.register(Tool(
+            "maps_feasibility", "PLACES_SEARCH", False, False, self.api.maps_feasibility,
+            description="PREFERRED for in-person venue planning: searches real venues AND returns each member's travel time + a fairness ranking (named ETAs, no private locations). Use this instead of research_places whenever location/travel matters, so you can pick a spot that's fair to everyone. Venues that break a member's hard travel limit are already removed; soft warnings are annotated.",
+            input_schema={"type": "object", "properties": {
+                "query": {"type": "string", "description": "what to search, e.g. 'sushi', 'cabin catskills'"},
+                "near": {"type": "string", "description": "optional area/anchor"},
+            }, "required": ["query"]},
+            loop=True, proactive=True,
+        ))
+        self.register(Tool(
             "get_plan", "", False, False, self.api.get_plan,
             description="Read a plan's current options, votes, and state. Call before refining or to check where a decision stands.",
             input_schema={"type": "object", "properties": {"plan_id": {"type": "string"}}, "required": ["plan_id"]},

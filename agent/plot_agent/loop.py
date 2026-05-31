@@ -129,6 +129,11 @@ class AgentLoop:
             org = ctx.get("organizerId") or next((m["userId"] for m in ctx.get("members", []) if m.get("userId")), "")
             return self.tools.invoke("research_places", user_id=org, group_id=ctx["groupId"],
                                      query=args.get("query", ""), near=args.get("near"))
+        if name == "maps_feasibility":
+            return self.tools.invoke(
+                "maps_feasibility", group_id=ctx["groupId"], query=args.get("query", ""),
+                near=args.get("near"), plan_id=state.get("plan_id"),
+            )
         if name == "get_plan":
             return self.tools.invoke("get_plan", plan_id=args.get("plan_id"))
         if name == "post_message":
@@ -172,6 +177,18 @@ class AgentLoop:
             return {"planId": out.get("id"), "state": out.get("state"), "options": [o.get("label") for o in (out.get("options") or [])]}
         if name == "get_plan" and isinstance(out, dict):
             return {"state": out.get("state"), "options": [o.get("label") for o in (out.get("options") or [])], "votes": out.get("votes")}
+        if name == "maps_feasibility" and isinstance(out, dict):
+            cands = [c for c in (out.get("candidates") or []) if not c.get("removed")][:5]
+            return {
+                "status": out.get("status"), "reason": out.get("reason"),
+                "venues": [{
+                    "name": c["venue"].get("name"),
+                    "fairness": round(c["travel"].get("fairnessScore", 0)),
+                    "medianEtaMin": c["travel"].get("medianEtaMin"),
+                    "etas": [{"name": n["name"], "min": n["durationMin"], "mode": n["mode"], "flag": n["guardrail"]} for n in c["travel"].get("namedEtas", [])],
+                } for c in cands],
+                "attribution": out.get("attribution"),
+            }
         if name == "post_message":
             return {"posted": True}
         # MCP tools (Calendar/Maps/Resy …) and anything else: hand the result back, truncated

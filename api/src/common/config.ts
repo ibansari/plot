@@ -33,5 +33,13 @@ export const config = {
   linkSigningSecret: process.env.PLOT_LINK_SIGNING_SECRET ?? "dev-link-secret-change-me",
   defaultSpendCapCents: parseInt(process.env.PLOT_DEFAULT_SPEND_CAP_CENTS ?? "5000", 10),
 
+  // Native Maps (Slice 1): one server-side Google key for Places + Routes. Never shipped raw to
+  // clients (the iOS SDK uses its own key). Absent → maps feasibility degrades (status DEGRADED).
+  googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY ?? "",
+  // AES-256-GCM secret for encrypting private member origins + connector creds at rest (§Privacy).
+  // Dev default is NOT secure — set ENCRYPTION_KEY (32+ bytes) in any real environment.
+  encryptionKey: process.env.ENCRYPTION_KEY ?? "dev-insecure-encryption-key-change-me!",
+  weatherkitToken: process.env.WEATHERKIT_TOKEN ?? "", // Slice 3; absent → weather degrades
+
   inngestDev: (process.env.INNGEST_DEV ?? "1") === "1",
 };

@@ -60,6 +60,7 @@ class CaptureApi:
     def remember_constraint(self, **k):
         return {"remembered": True}
 
+    def maps_feasibility(self, **k): return {"status": "DEGRADED", "candidates": []}
     def get_plan(self, **k):
         return {}
 

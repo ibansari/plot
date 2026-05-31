@@ -479,3 +479,57 @@ model Embedding {
 
   @@index([groupId])
 }
+
+// ───────── Native Maps + travel equity (MCP-first integrations spec, Slice 1) ─────────
+// Identity is stored as plain scalars (userId/contactId/planId/optionId) — NOT Prisma relations —
+// so these private/derived tables attach without editing the core models. Coordinates live ONLY in
+// the encrypted `originEnc` blob (AES-256-GCM); group DTOs read the derived summaries below.
+
+model MemberTravelPreference {
+  id           String   @id @default(cuid())
+  groupId      String
+  userId       String?
+  contactId    String?
+  savedPlaceId String? // Google place id of the saved starting area
+  originEnc    String? // encrypted {lat,lng} — PRIVATE, never group-visible
+  label        String? // e.g. "home", "office" (group-visible label only)
+  mode         String   @default("AUTO") // DRIVE | TRANSIT | WALK | BICYCLE | AUTO
+  softLimitMin Int?
+  hardLimit    Boolean  @default(false)
+  transitPrefs Json? // { fewerTransfers?, lessWalking? }
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([groupId, userId])
+  @@unique([groupId, contactId])
+}
+
+model PlanTravelOverride {
+  id        String   @id @default(cuid())
+  planId    String
+  userId    String?
+  contactId String?
+  originEnc String // encrypted one-off current-location — PRIVATE
+  expiresAt DateTime // expires when the plan completes/cancels (§Privacy)
+  createdAt DateTime @default(now())
+
+  @@unique([planId, userId])
+  @@unique([planId, contactId])
+  @@index([planId])
+}
+
+model PlanOptionTravelSummary {
+  id            String   @id @default(cuid())
+  optionId      String   @unique
+  planId        String
+  medianEtaMin  Int?
+  maxEtaMin     Int?
+  spreadMin     Int?
+  fairnessScore Float    @default(0)
+  softWarnings  Int      @default(0)
+  hardFailures  Int      @default(0)
+  namedEtas     Json // [{ name, mode, durationMin, guardrail }] — group-visible, NO coordinates
+  createdAt     DateTime @default(now())
+
+  @@index([planId])
+}

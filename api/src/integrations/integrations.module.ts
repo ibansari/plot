@@ -10,11 +10,20 @@ import { OsmPlacesProvider } from "./places.osm";
 import { GooglePlacesProvider } from "./places.google";
 import { PrismaService } from "../common/prisma.service";
 import { config } from "../common/config";
+// Native Maps (Slice 1)
+import { MapsService } from "./maps/maps.service";
+import { MapsController } from "./maps/maps.controller";
+import { GooglePlacesProvider as NativeGooglePlaces } from "./maps/google-places.provider";
+import { GoogleRoutesProvider } from "./maps/google-routes.provider";
+import { NATIVE_PLACES_PROVIDER, ROUTES_PROVIDER } from "./maps/maps.types";
 
 @Module({
-  controllers: [IntegrationsController],
+  controllers: [IntegrationsController, MapsController],
   providers: [
     IntegrationsService,
+    MapsService,
+    { provide: NATIVE_PLACES_PROVIDER, useClass: NativeGooglePlaces },
+    { provide: ROUTES_PROVIDER, useClass: GoogleRoutesProvider },
     {
       provide: CALENDAR_PROVIDER,
       useFactory: (prisma: PrismaService) =>
@@ -42,6 +51,6 @@ import { config } from "../common/config";
       inject: [PrismaService],
     },
   ],
-  exports: [IntegrationsService],
+  exports: [IntegrationsService, MapsService],
 })
 export class IntegrationsModule {}
