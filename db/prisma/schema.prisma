@@ -533,3 +533,132 @@ model PlanOptionTravelSummary {
 
   @@index([planId])
 }
+
+// ───────── MCP gateway: catalog, connections, invocations, approvals, receipts (Slice 2) ─────────
+// A thin product-grade wrapper around dynamic MCP calls: credentials, risk, approval, audit, render.
+// Credentials live ONLY in encrypted `credentialEnc` — never in invocation inputs/outputs, audit, or
+// render envelopes (§Privacy and Credential Rules).
+
+enum McpRisk {
+  READ
+  WRITE
+  HOLD
+  PURCHASE
+  IRREVERSIBLE
+}
+
+enum McpOwnerScope {
+  MEMBER
+  GROUP
+}
+
+enum ApprovalState {
+  PENDING
+  APPROVED
+  REJECTED
+  EXECUTED
+  FAILED
+}
+
+model ConnectorCatalogEntry {
+  id          String   @id @default(cuid())
+  key         String   @unique // stable slug, e.g. "google-calendar", "resy"
+  displayName String
+  description String?
+  category    String // core | going_out | trips
+  trustTier   String   @default("community") // official | partner | community
+  sourceUrl   String?
+  rendererHint String? // default renderer for this connector's results
+  createdAt   DateTime @default(now())
+
+  connections ConnectorConnection[]
+}
+
+model ConnectorConnection {
+  id            String        @id @default(cuid())
+  catalogKey    String
+  ownerScope    McpOwnerScope @default(MEMBER)
+  groupId       String?
+  userId        String?
+  transport     Json // { transport: "stdio"|"http", command/args/url }
+  credentialEnc String? // encrypted credential reference — NEVER serialized out
+  health        String        @default("unknown") // ok | degraded | down | unknown
+  coverage      String        @default("available") // available | degraded | unavailable | needs_connection
+  lastProbeAt   DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  catalog ConnectorCatalogEntry @relation(fields: [catalogKey], references: [key])
+  tools   ConnectorTool[]
+
+  @@index([groupId])
+  @@index([userId])
+}
+
+model ConnectorTool {
+  id             String   @id @default(cuid())
+  connectionId   String
+  toolName       String
+  inputSchema    Json?
+  mutate         Boolean  @default(false)
+  risk           McpRisk  @default(READ)
+  requiredScopes String[]
+  approvalPolicy String   @default("none") // none | member | group | organizer
+  rendererHint   String?
+  health         String   @default("ok")
+  createdAt      DateTime @default(now())
+
+  connection ConnectorConnection @relation(fields: [connectionId], references: [id])
+
+  @@unique([connectionId, toolName])
+}
+
+model IntegrationInvocation {
+  id            String   @id @default(cuid())
+  actor         String   @default("plot")
+  groupId       String?
+  connectionId  String?
+  serverKey     String?
+  toolName      String
+  sanitizedInput  Json? // creds/origins stripped
+  sanitizedOutput Json? // creds stripped
+  status        String   @default("READY") // READY | DEGRADED | NEEDS_APPROVAL | FAILED
+  renderEnvelope Json? // IntegrationRenderEnvelope (the only thing chat ever shows)
+  risk          McpRisk  @default(READ)
+  startedAt     DateTime @default(now())
+  finishedAt    DateTime?
+
+  approvals ExternalActionApproval[]
+  receipts  ExternalActionReceipt[]
+
+  @@index([groupId])
+}
+
+model ExternalActionApproval {
+  id            String        @id @default(cuid())
+  invocationId  String
+  policy        String // member | group | organizer
+  preview       Json // provider, item, total, policy, risk, fallback — group-visible
+  state         ApprovalState @default(PENDING)
+  approvedBy    String?
+  approvedAt    DateTime?
+  createdAt     DateTime      @default(now())
+
+  invocation IntegrationInvocation @relation(fields: [invocationId], references: [id])
+
+  @@index([invocationId])
+}
+
+model ExternalActionReceipt {
+  id                   String   @id @default(cuid())
+  invocationId         String
+  providerConfirmation String?
+  policyUrl            String?
+  cancellable          Boolean  @default(false)
+  fallbackUrl          String?
+  createdAt            DateTime @default(now())
+
+  invocation IntegrationInvocation @relation(fields: [invocationId], references: [id])
+
+  @@index([invocationId])
+}

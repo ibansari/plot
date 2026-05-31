@@ -16,12 +16,18 @@ import { MapsController } from "./maps/maps.controller";
 import { GooglePlacesProvider as NativeGooglePlaces } from "./maps/google-places.provider";
 import { GoogleRoutesProvider } from "./maps/google-routes.provider";
 import { NATIVE_PLACES_PROVIDER, ROUTES_PROVIDER } from "./maps/maps.types";
+// MCP gateway (Slice 2)
+import { McpGatewayService } from "./mcp/mcp-gateway.service";
+import { McpRenderService } from "./mcp/mcp-render.service";
+import { McpController } from "./mcp/mcp.controller";
 
 @Module({
-  controllers: [IntegrationsController, MapsController],
+  controllers: [IntegrationsController, MapsController, McpController],
   providers: [
     IntegrationsService,
     MapsService,
+    McpGatewayService,
+    McpRenderService,
     { provide: NATIVE_PLACES_PROVIDER, useClass: NativeGooglePlaces },
     { provide: ROUTES_PROVIDER, useClass: GoogleRoutesProvider },
     {
