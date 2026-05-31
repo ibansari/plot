@@ -86,7 +86,7 @@ public struct PlotCard<Content: View>: View {
             .background(Theme.surface)
             .overlay(RoundedRectangle(cornerRadius: 18).stroke(accentBorder ? Theme.accentDim2 : Theme.line, lineWidth: 1))
             .clipShape(RoundedRectangle(cornerRadius: 18))
-            .shadow(color: .black.opacity(0.35), radius: 15, y: 12)
+            .shadow(color: .black.opacity(0.07), radius: 14, y: 10)
     }
 }
 

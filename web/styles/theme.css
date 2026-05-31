@@ -1,24 +1,34 @@
-/* PLOT design tokens — mirror `plot-mockup (1).html` + ios/Plot/DesignSystem/Theme.swift. */
+/* PLOT design tokens — light theme "Cool Mint" (mint + periwinkle, Space Grotesk). */
 :root {
-  --bg: #0c0e12;
-  --bg-2: #0f1217;
-  --surface: #15181f;
-  --surface-2: #1b1f28;
-  --surface-3: #232833;
-  --line: rgba(255, 255, 255, 0.07);
-  --line-2: rgba(255, 255, 255, 0.12);
-  --text: #eaecf1;
-  --text-dim: #9aa1ae;
-  --text-faint: #646b79;
-  --accent: #5fe6c1;
-  --accent-ink: #04130e;
-  --accent-dim: rgba(95, 230, 193, 0.13);
-  --accent-dim-2: rgba(95, 230, 193, 0.22);
-  --accent-glow: rgba(95, 230, 193, 0.4);
-  --warn: #f2b25c;
-  --warn-dim: rgba(242, 178, 92, 0.14);
+  --bg: #f4f6f9;
+  --bg-2: #eef1f6;
+  --surface: #ffffff;
+  --surface-2: #f7f9fc;
+  --surface-3: #eef1f6;
+  --line: rgba(22, 28, 40, 0.09);
+  --line-2: rgba(22, 28, 40, 0.16);
+  --text: #161b26;
+  --text-dim: #59616f;
+  --text-faint: #98a0ae;
+
+  /* primary accent — deeper mint so it reads on white */
+  --accent: #109a86;
+  --accent-ink: #ffffff;
+  --accent-dim: rgba(16, 154, 134, 0.12);
+  --accent-dim-2: rgba(16, 154, 134, 0.24);
+  --accent-glow: rgba(16, 154, 134, 0.3);
+
+  /* fun secondary — periwinkle, for picked states + small pops */
+  --pop: #6d7cff;
+  --pop-ink: #ffffff;
+  --pop-dim: rgba(109, 124, 255, 0.12);
+  --pop-dim-2: rgba(109, 124, 255, 0.26);
+  --pop-shadow: rgba(109, 124, 255, 0.14);
+
+  --warn: #c2701a;
+  --warn-dim: rgba(194, 112, 26, 0.14);
   --radius: 18px;
-  --font-display: "Sora", system-ui, sans-serif;
+  --font-display: "Space Grotesk", system-ui, sans-serif;
   --font-body: "Onest", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 }
@@ -28,12 +38,12 @@ html, body { margin: 0; padding: 0; }
 body {
   color: var(--text);
   font-family: var(--font-body);
-  background-color: #08090c;
+  background-color: var(--bg);
   background-image:
-    radial-gradient(900px 520px at 50% -10%, rgba(95, 230, 193, 0.1), transparent 60%),
-    radial-gradient(760px 520px at 112% 108%, rgba(96, 150, 230, 0.07), transparent 55%),
-    linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
+    radial-gradient(900px 520px at 50% -10%, rgba(16, 154, 134, 0.09), transparent 60%),
+    radial-gradient(760px 520px at 112% 108%, rgba(109, 124, 255, 0.1), transparent 55%),
+    linear-gradient(rgba(22, 25, 32, 0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(22, 25, 32, 0.018) 1px, transparent 1px);
   background-size: auto, auto, 42px 42px, 42px 42px;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
@@ -49,9 +59,8 @@ body {
   width: 22px; height: 22px; border-radius: 7px;
   background: var(--accent-dim); border: 1px solid var(--accent-dim-2);
   display: inline-grid; place-items: center; color: var(--accent); font-size: 12px;
-  box-shadow: 0 0 14px rgba(95, 230, 193, 0.12);
 }
-.title { font-family: var(--font-display); font-size: 27px; font-weight: 600; margin: 14px 0 4px; letter-spacing: -0.02em; }
+.title { font-family: var(--font-display); font-size: 28px; font-weight: 700; margin: 14px 0 4px; letter-spacing: -0.02em; }
 .sub { color: var(--text-dim); font-size: 14px; margin-bottom: 24px; line-height: 1.5; }
 
 .card {
@@ -60,13 +69,13 @@ body {
   border-radius: var(--radius);
   padding: 15px;
   margin-bottom: 11px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 30px rgba(0, 0, 0, 0.35);
-  transition: border-color 0.15s ease, background 0.15s ease;
+  box-shadow: 0 1px 2px rgba(22, 25, 32, 0.04), 0 10px 24px rgba(22, 25, 32, 0.06);
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
 }
 .option { cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .option:hover { border-color: var(--line-2); background: var(--surface-2); }
-.option.picked { border-color: var(--accent); background: linear-gradient(90deg, rgba(95,230,193,0.06), transparent 70%); }
-.option .label { font-weight: 700; font-size: 15px; letter-spacing: -0.01em; }
+.option.picked { border-color: var(--pop); background: linear-gradient(90deg, var(--pop-dim), transparent 70%); box-shadow: 0 1px 2px rgba(22,25,32,0.04), 0 12px 24px var(--pop-shadow); }
+.option .label { font-weight: 600; font-size: 15px; letter-spacing: -0.01em; }
 .option .meta { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-dim); margin-top: 5px; }
 .tally {
   font-family: var(--font-mono); font-size: 13px; color: var(--accent); white-space: nowrap;
@@ -74,16 +83,16 @@ body {
   padding: 5px 9px; border-radius: 9px;
 }
 .tier { color: var(--text-dim); font-family: var(--font-mono); }
-.locked { border-color: var(--accent-dim-2); }
+.locked { border-color: var(--accent-dim-2); background: linear-gradient(90deg, var(--accent-dim), transparent 72%); }
 
 .btn {
   width: 100%; padding: 14px; border-radius: 12px; border: 0;
   background: var(--accent); color: var(--accent-ink); font-weight: 700; font-size: 15px;
-  cursor: pointer; font-family: var(--font-body); box-shadow: 0 6px 22px rgba(95, 230, 193, 0.22);
+  cursor: pointer; font-family: var(--font-body); box-shadow: 0 8px 22px rgba(16, 154, 134, 0.26);
   transition: 0.15s;
 }
 .btn:active { transform: scale(0.99); }
-.btn:disabled { opacity: 0.4; cursor: default; box-shadow: none; }
+.btn:disabled { opacity: 0.45; cursor: default; box-shadow: none; }
 .needs { color: var(--warn); font-family: var(--font-mono); font-size: 12px; }
 .foot { margin-top: 26px; color: var(--text-faint); font-size: 11.5px; text-align: center; font-family: var(--font-mono); }
 .err { color: var(--warn); }
