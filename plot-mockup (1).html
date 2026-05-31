@@ -1,0 +1,1028 @@
+<!-- PLOT — interactive product mockup · dark / premium / minimal-futuristic theme -->
+<!-- Single-file, self-contained reference for a coding agent. iPhone 17 viewport (402x874pt). -->
+<!-- Hero demo (general planning): a no-booking games night + a gig-ticket booking. -->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Plot — Product Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Onest:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+<style>
+:root{
+  --bg:#0C0E12;--bg-2:#0F1217;
+  --surface:#15181F;--surface-2:#1B1F28;--surface-3:#232833;
+  --line:rgba(255,255,255,.07);--line-2:rgba(255,255,255,.12);
+  --text:#EAECF1;--text-dim:#9AA1AE;--text-faint:#646B79;
+  --accent:#5FE6C1;--accent-press:#46cfa9;--accent-ink:#04130E;
+  --accent-dim:rgba(95,230,193,.13);--accent-dim-2:rgba(95,230,193,.22);--accent-glow:rgba(95,230,193,.40);
+  --me:#15271F;
+  --warn:#F2B25C;--warn-dim:rgba(242,178,92,.14);
+  --danger:#E5736B;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 12px 30px rgba(0,0,0,.35);
+  --shadow-lg:0 40px 100px rgba(0,0,0,.6);
+  --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  font-family:"Onest",system-ui,sans-serif;color:var(--text);
+  background-color:#08090C;
+  background-image:
+    radial-gradient(900px 520px at 50% -10%, rgba(95,230,193,.10), transparent 60%),
+    radial-gradient(760px 520px at 112% 108%, rgba(96,150,230,.07), transparent 55%),
+    linear-gradient(rgba(255,255,255,.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.022) 1px, transparent 1px);
+  background-size:auto,auto,42px 42px,42px 42px;
+  min-height:100vh;display:flex;align-items:center;justify-content:center;padding:32px 16px;
+  -webkit-font-smoothing:antialiased;
+}
+.stage{display:flex;flex-direction:column;align-items:center;gap:18px}
+.brandline{display:flex;align-items:center;gap:11px;color:var(--text-dim);font-weight:500;font-size:13px;letter-spacing:.01em}
+.brandline .mark{width:26px;height:26px;border-radius:8px;background:var(--accent-dim);border:1px solid var(--accent-dim-2);display:grid;place-items:center;position:relative}
+.brandline .mark::before{content:"✦";color:var(--accent);font-size:14px;line-height:1}
+.brandline b{font-family:"Sora";color:var(--text);font-weight:600}
+
+/* phone shell — iPhone 17 logical viewport 402x874 (+ bezel) */
+.phone{width:426px;max-width:94vw;background:#0A0B0E;border:1px solid rgba(255,255,255,.06);border-radius:50px;padding:11px;
+  box-shadow:var(--shadow-lg),0 0 0 1px rgba(255,255,255,.03) inset,0 1px 0 rgba(255,255,255,.06) inset;position:relative;}
+.screen-wrap{position:relative;height:874px;max-height:88vh;background:var(--bg);border-radius:40px;overflow:hidden;
+  display:flex;flex-direction:column;box-shadow:0 0 0 1px var(--line) inset;}
+.statusbar{height:30px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:15px 30px 0;font-size:12.5px;font-weight:600;color:var(--text);font-family:var(--mono)}
+.statusbar .dots{display:flex;gap:6px;align-items:center}
+.statusbar .bars{display:flex;gap:2px;align-items:flex-end;height:11px}
+.statusbar .bars i{width:3px;background:var(--text);border-radius:1px;display:block}
+.statusbar .bars i:nth-child(1){height:4px}.statusbar .bars i:nth-child(2){height:6px}
+.statusbar .bars i:nth-child(3){height:9px}.statusbar .bars i:nth-child(4){height:11px}
+.batt{width:22px;height:11px;border:1.5px solid var(--text);border-radius:3px;position:relative;padding:1.5px;opacity:.9}
+.batt::after{content:"";position:absolute;right:-3px;top:3px;width:2px;height:4px;background:var(--text);border-radius:0 1px 1px 0}
+.batt i{display:block;height:100%;width:74%;background:var(--accent);border-radius:1px}
+
+.body{flex:1;overflow-y:auto;overflow-x:hidden;scrollbar-width:none}
+.body::-webkit-scrollbar{display:none}
+.screen{display:none;flex-direction:column;min-height:100%}
+.screen.active{display:flex;animation:fade .3s ease}
+@keyframes fade{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+
+.hdr{padding:8px 22px 16px;flex:none}
+.hdr h1{font-family:"Sora";font-weight:600;font-size:29px;letter-spacing:-.02em;margin:6px 0 3px}
+.hdr .sub{color:var(--text-dim);font-size:13px;font-weight:500}
+
+/* tab bar */
+.tabbar{flex:none;display:flex;justify-content:space-around;align-items:flex-start;padding:10px 8px 22px;
+  background:rgba(12,14,18,.72);backdrop-filter:blur(18px);border-top:1px solid var(--line);}
+.tab{flex:1;border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:4px;
+  color:var(--text-faint);font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;font-family:var(--mono);cursor:pointer;padding:2px}
+.tab svg{width:22px;height:22px;stroke:var(--text-faint);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tab.on{color:var(--accent)}.tab.on svg{stroke:var(--accent)}
+.tab .flag{position:absolute;top:-2px;right:-7px;width:7px;height:7px;background:var(--accent);border-radius:50%;box-shadow:0 0 8px var(--accent-glow)}
+.tab .ico{position:relative}
+
+/* avatars + plot mark */
+.av{border-radius:50%;display:grid;place-items:center;color:#0b0d10;font-weight:700;flex:none;overflow:hidden;font-size:13px;box-shadow:0 0 0 2px var(--bg)}
+.av.s{width:30px;height:30px;font-size:11px}.av.m{width:38px;height:38px}.av.lg{width:52px;height:52px;font-size:18px}
+.ava-sam{background:#D49A78}.ava-max{background:#7FA6D6}.ava-jordan{background:#B69AD6}
+.ava-you{background:var(--accent)}.ava-priya{background:#E0C06A}.ava-leo{background:#E59A93}
+.stack{display:flex}.stack .av{margin-left:-9px}.stack .av:first-child{margin-left:0}
+.plot-mark{width:30px;height:30px;border-radius:9px;background:var(--accent-dim);border:1px solid var(--accent-dim-2);display:grid;place-items:center;flex:none;position:relative;
+  box-shadow:0 0 14px rgba(95,230,193,.10);animation:plotpulse 4.5s ease-in-out infinite}
+.plot-mark::before{content:"✦";color:var(--accent);font-size:15px;line-height:1}
+.plot-mark.s{width:24px;height:24px;border-radius:7px}.plot-mark.s::before{font-size:12px}
+.plot-mark.xs{width:17px;height:17px;border-radius:5px}.plot-mark.xs::before{font-size:9px}
+@keyframes plotpulse{0%,100%{box-shadow:0 0 14px rgba(95,230,193,.10)}50%{box-shadow:0 0 18px rgba(95,230,193,.28)}}
+
+/* pills — mono, technical */
+.pill{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.04em;text-transform:uppercase;padding:4px 9px;border-radius:7px;border:1px solid var(--line)}
+.pill.plot{background:var(--accent-dim);color:var(--accent);border-color:var(--accent-dim-2)}
+.pill.warn{background:var(--warn-dim);color:var(--warn);border-color:rgba(242,178,92,.25)}
+.pill.ok{background:var(--accent-dim);color:var(--accent);border-color:var(--accent-dim-2)}
+.pill.ghost{background:var(--surface-2);color:var(--text-dim)}
+
+/* buttons */
+.btn{border:0;border-radius:12px;font-family:"Onest",sans-serif;font-weight:700;cursor:pointer;font-size:14px;padding:12px 16px;transition:.15s;letter-spacing:.01em}
+.btn.primary{background:var(--accent);color:var(--accent-ink);box-shadow:0 6px 22px rgba(95,230,193,.22)}
+.btn.primary:active{transform:scale(.985);background:var(--accent-press)}
+.btn.ghost{background:transparent;color:var(--text);border:1px solid var(--line-2)}
+.btn.plot{background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent-dim-2)}
+.btn.sm{padding:8px 13px;font-size:12.5px;border-radius:10px}
+.row{display:flex;align-items:center;gap:12px}
+.muted{color:var(--text-dim)}.faint{color:var(--text-faint)}
+
+/* CHATS */
+.chatlist{padding:2px 12px 16px;display:flex;flex-direction:column;gap:4px}
+.chatrow{display:flex;gap:13px;align-items:center;padding:14px 12px;border-radius:16px;cursor:pointer;transition:.15s}
+.chatrow:active{background:var(--surface)}
+.chatrow .meta{flex:1;min-width:0}
+.chatrow .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.chatrow .name{font-weight:700;font-size:15.5px;letter-spacing:-.01em}
+.chatrow .time{font-size:10.5px;color:var(--text-faint);font-family:var(--mono);flex:none}
+.chatrow .last{font-size:13px;color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:3px}
+.chatrow .last b{color:var(--accent);font-weight:600}
+.chatchips{display:flex;gap:6px;margin-top:9px;flex-wrap:wrap}
+.unread{width:8px;height:8px;border-radius:50%;background:var(--accent);flex:none;box-shadow:0 0 8px var(--accent-glow)}
+.searchbar{margin:0 18px 12px;background:var(--surface);border:1px solid var(--line);border-radius:13px;display:flex;align-items:center;gap:9px;padding:11px 13px;color:var(--text-faint);font-size:14px}
+.searchbar svg{width:17px;height:17px;stroke:var(--text-faint);fill:none;stroke-width:2}
+
+/* GROUP CHAT */
+.chathdr{flex:none;background:rgba(12,14,18,.8);backdrop-filter:blur(16px);border-bottom:1px solid var(--line);padding:4px 12px 12px;display:flex;align-items:center;gap:10px}
+.iconbtn{width:34px;height:34px;border-radius:11px;border:0;background:transparent;display:grid;place-items:center;cursor:pointer}
+.iconbtn svg{width:20px;height:20px;stroke:var(--text-dim);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.iconbtn:active{background:var(--surface)}
+.chathdr .who{flex:1;min-width:0}
+.chathdr .who .nm{font-weight:700;font-size:16px;letter-spacing:-.01em}
+.chathdr .who .st{font-size:10.5px;color:var(--accent);font-family:var(--mono);letter-spacing:.03em;text-transform:uppercase;display:flex;align-items:center;gap:5px;margin-top:1px}
+.chathdr .who .st .dot{width:5px;height:5px;border-radius:50%;background:var(--accent);display:inline-block;box-shadow:0 0 6px var(--accent-glow)}
+
+.planbar{margin:12px 12px 2px;background:var(--surface);border:1px solid var(--accent-dim-2);border-radius:16px;padding:13px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;
+  box-shadow:0 0 0 1px rgba(95,230,193,.04),0 10px 30px rgba(0,0,0,.3);position:relative;overflow:hidden}
+.planbar::after{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent);box-shadow:0 0 16px var(--accent-glow)}
+.planbar .pb-t{flex:1;min-width:0}
+.planbar .pb-t .a{font-weight:700;font-size:13.5px}
+.planbar .pb-t .b{font-size:10.5px;color:var(--text-dim);font-family:var(--mono);letter-spacing:.02em;margin-top:2px}
+.planbar .chev svg{stroke:var(--text-faint);width:18px;height:18px;fill:none;stroke-width:2.2}
+
+.thread{padding:14px 14px 8px;display:flex;flex-direction:column;gap:12px}
+.daydiv{text-align:center;font-size:10px;font-weight:500;color:var(--text-faint);font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;margin:6px 0 2px}
+.msg{display:flex;gap:9px;max-width:88%}
+.msg .av{margin-top:14px}
+.msg .stack-name{font-size:10px;font-weight:500;color:var(--text-faint);font-family:var(--mono);letter-spacing:.04em;text-transform:uppercase;margin:0 0 3px 3px}
+.bubble{background:var(--surface);padding:9px 13px;border-radius:15px;border-top-left-radius:5px;font-size:14px;line-height:1.45;border:1px solid var(--line)}
+.msg.me{align-self:flex-end;flex-direction:row-reverse}
+.msg.me .bubble{background:var(--me);border:1px solid rgba(95,230,193,.16);border-top-left-radius:15px;border-top-right-radius:5px}
+.msg.me .stack-name{display:none}
+.plotmsg{display:flex;gap:9px;align-items:flex-start}
+.plotmsg .col{flex:1;min-width:0}
+.plotmsg .nm{font-size:10px;font-weight:500;color:var(--accent);font-family:var(--mono);letter-spacing:.05em;text-transform:uppercase;margin:0 0 4px 2px;display:flex;align-items:center;gap:6px}
+.plotbubble{background:var(--surface);border:1px solid var(--accent-dim-2);padding:11px 13px;border-radius:15px;border-top-left-radius:5px;font-size:13.5px;line-height:1.5}
+
+/* cards */
+.card{background:var(--surface);border-radius:18px;border:1px solid var(--line);overflow:hidden;box-shadow:var(--shadow)}
+.card .chead{padding:13px 15px 12px;border-bottom:1px solid var(--line)}
+.card .chead .k{font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:7px}
+.card .chead .t{font-family:"Sora";font-weight:600;font-size:18px;margin-top:5px;letter-spacing:-.01em}
+.opt{padding:13px 15px;display:flex;gap:12px;border-bottom:1px solid var(--line);position:relative;cursor:pointer;transition:.15s}
+.opt:last-child{border-bottom:0}
+.opt:active{background:var(--surface-2)}
+.opt .ophoto{width:50px;height:50px;border-radius:12px;flex:none;background-size:cover;background-position:center;background-color:var(--surface-2);border:1px solid var(--line)}
+.opt .oinfo{flex:1;min-width:0}
+.opt .oinfo .on{font-weight:700;font-size:14.5px;letter-spacing:-.01em}
+.opt .oinfo .od{font-family:var(--mono);font-size:10.5px;color:var(--text-dim);margin-top:4px;display:flex;gap:8px;flex-wrap:wrap;letter-spacing:.01em}
+.opt .fit{font-size:11.5px;color:var(--accent);background:var(--accent-dim);border:1px solid var(--accent-dim-2);padding:3px 8px;border-radius:7px;margin-top:7px;display:inline-block;font-weight:500}
+.rtag{font-family:var(--mono);font-size:9.5px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:6px;margin-top:7px;margin-left:6px;display:inline-block}
+.rtag.free{background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent-dim-2)}
+.rtag.book{background:transparent;color:var(--text-faint);border:1px solid var(--line-2)}
+.opt .votecol{display:flex;flex-direction:column;align-items:flex-end;gap:7px;flex:none}
+.votebtns{display:flex;gap:5px}
+.vbtn{width:30px;height:30px;border-radius:9px;border:1px solid var(--line);cursor:pointer;display:grid;place-items:center;font-weight:700;font-size:13px;background:var(--surface-2);color:var(--text-dim)}
+.vbtn.up{color:var(--accent);border-color:var(--accent-dim-2)}.vbtn.up.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.voters{display:flex;align-items:center;gap:5px;font-size:10.5px;color:var(--text-dim);font-family:var(--mono)}
+.opt.lead{background:linear-gradient(90deg,rgba(95,230,193,.06),transparent 70%)}
+.opt .crown{position:absolute;left:13px;top:9px;font-family:var(--mono);font-size:8.5px;letter-spacing:.08em;color:var(--accent);background:var(--accent-dim);border:1px solid var(--accent-dim-2);padding:1px 5px;border-radius:5px}
+.cfoot{padding:11px 15px;display:flex;align-items:center;gap:10px;justify-content:space-between;background:var(--surface-2)}
+.cfoot .meta{font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:.02em;display:flex;align-items:center;gap:6px}
+.threadlink{font-size:11.5px;font-weight:600;color:var(--accent);display:flex;align-items:center;gap:5px;cursor:pointer;background:none;border:0;padding:0;font-family:inherit}
+
+/* resolution / confirmation */
+.confirm{background:var(--surface);border-radius:18px;border:1px solid var(--line);overflow:hidden;box-shadow:var(--shadow)}
+.confirm .ctop{padding:14px 15px;display:flex;gap:12px;align-items:center;border-bottom:1px dashed var(--line-2)}
+.confirm .seal{width:40px;height:40px;border-radius:50%;background:var(--accent-dim);border:1px solid var(--accent-dim-2);display:grid;place-items:center;flex:none;box-shadow:0 0 18px rgba(95,230,193,.18)}
+.confirm .seal svg{width:20px;height:20px;stroke:var(--accent);fill:none;stroke-width:2.4}
+.confirm .ctop .a{font-weight:700;font-size:14.5px;letter-spacing:-.01em}
+.confirm .ctop .b{font-size:11.5px;color:var(--text-dim);margin-top:2px}
+.confirm .det{padding:13px 15px;display:flex;flex-direction:column;gap:9px}
+.confirm .det .lr{display:flex;justify-content:space-between;font-size:13px}
+.confirm .det .lr span:first-child{color:var(--text-dim);font-family:var(--mono);font-size:11px;letter-spacing:.03em;text-transform:uppercase}
+.confirm .det .lr span:last-child{font-weight:600}
+.confirm .cact{padding:0 15px 14px;display:flex;gap:8px}
+
+/* bring-list */
+.bring{margin-top:10px;background:var(--surface);border-radius:16px;border:1px solid var(--line);overflow:hidden}
+.bring .bh{padding:12px 15px;font-weight:700;font-size:13.5px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:7px}
+.bring .br{display:flex;align-items:center;gap:10px;padding:9px 15px;font-size:13px;border-bottom:1px solid var(--line)}
+.bring .br:last-child{border-bottom:0}
+.bring .br .nm{flex:1;font-weight:500}
+.bring .br .it{font-weight:600;color:var(--accent);font-size:12.5px}
+.bring .br .it.none{color:var(--text-faint);font-weight:500;font-family:var(--mono);font-size:11px}
+
+/* money */
+.splitcard{background:var(--surface);border-radius:18px;border:1px solid var(--line);overflow:hidden;box-shadow:var(--shadow)}
+.splitcard .sh{padding:12px 15px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line)}
+.splitcard .sh .t{font-weight:700;font-size:13.5px}
+.splitcard .sh .amt{font-family:"Sora";font-weight:600;font-size:17px;color:var(--accent)}
+.splitcard .sb{padding:6px 15px 12px}
+.splitrow{display:flex;align-items:center;gap:10px;padding:8px 0;font-size:13px}
+.splitrow .nm{flex:1;font-weight:500}
+.splitrow .st{font-family:var(--mono);font-size:10.5px;letter-spacing:.02em;text-transform:uppercase}
+.splitrow .st.paid{color:var(--accent)}.splitrow .st.due{color:var(--warn)}.splitrow .st.skip{color:var(--text-faint)}
+
+.deadline{display:flex;align-items:center;gap:10px;background:var(--warn-dim);color:var(--warn);border:1px solid rgba(242,178,92,.22);border-radius:13px;padding:10px 13px;font-size:12.5px;font-weight:500;line-height:1.45}
+.deadline b{color:var(--text)}
+.deadline svg{width:17px;height:17px;stroke:var(--warn);fill:none;stroke-width:2;flex:none}
+
+.composer{flex:none;border-top:1px solid var(--line);background:rgba(12,14,18,.86);backdrop-filter:blur(14px);padding:10px 12px 26px;display:flex;gap:9px;align-items:center}
+.composer .field{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:11px 16px;color:var(--text-faint);font-size:14px}
+.composer .plotbtn{width:42px;height:42px;border-radius:50%;background:var(--accent-dim);border:1px solid var(--accent-dim-2);display:grid;place-items:center;flex:none;cursor:pointer;position:relative;box-shadow:0 0 16px rgba(95,230,193,.16)}
+.composer .plotbtn::before{content:"✦";color:var(--accent);font-size:18px;line-height:1}
+.composer .plus{width:30px;height:30px;display:grid;place-items:center;color:var(--accent);font-size:24px;font-weight:300;flex:none}
+
+/* PLANS */
+.seg{display:flex;gap:5px;margin:0 18px 14px;background:var(--surface);border:1px solid var(--line);padding:4px;border-radius:12px}
+.seg button{flex:1;border:0;background:none;font-family:var(--mono);font-weight:500;font-size:11.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--text-dim);padding:8px;border-radius:9px;cursor:pointer}
+.seg button.on{background:var(--surface-3);color:var(--text)}
+.planlist{padding:0 16px 16px;display:flex;flex-direction:column;gap:12px}
+.dategroup{font-family:var(--mono);font-size:10px;font-weight:500;color:var(--text-faint);letter-spacing:.1em;text-transform:uppercase;margin:8px 4px 0}
+.plancard{background:var(--surface);border-radius:18px;border:1px solid var(--line);overflow:hidden;box-shadow:var(--shadow)}
+.plancard .pc-top{padding:14px 15px;display:flex;gap:14px}
+.plancard .when{text-align:center;flex:none;width:48px}
+.plancard .when .d{font-family:"Sora";font-weight:600;font-size:25px;line-height:1}
+.plancard .when .m{font-family:var(--mono);font-size:10px;font-weight:500;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;margin-top:3px}
+.plancard .when .dow{font-family:var(--mono);font-size:9px;color:var(--text-faint);margin-top:2px;text-transform:uppercase}
+.plancard .pinfo{flex:1;min-width:0;border-left:1px solid var(--line);padding-left:14px}
+.plancard .pinfo .ti{font-weight:700;font-size:15px;letter-spacing:-.01em}
+.plancard .pinfo .gr{font-size:12px;color:var(--text-dim);margin-top:3px}
+.plancard .pinfo .ln{font-size:11.5px;color:var(--text-dim);margin-top:7px;display:flex;align-items:center;gap:7px;font-family:var(--mono);letter-spacing:.01em}
+.plancard .pinfo .ln svg{width:13px;height:13px;stroke:var(--text-faint);fill:none;stroke-width:2;flex:none}
+.plancard .pc-foot{padding:10px 15px;background:var(--surface-2);display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--line)}
+.rsvp{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:500;color:var(--text-dim)}
+
+/* DISCOVER */
+.disc{padding:0 16px 18px;display:flex;flex-direction:column;gap:16px}
+.whosfree{background:var(--surface);border:1px solid var(--accent-dim-2);border-radius:20px;padding:17px;position:relative;overflow:hidden;
+  box-shadow:0 0 0 1px rgba(95,230,193,.04),0 14px 36px rgba(0,0,0,.35)}
+.whosfree::before{content:"";position:absolute;right:-40px;top:-40px;width:140px;height:140px;border-radius:50%;background:radial-gradient(circle,rgba(95,230,193,.18),transparent 70%)}
+.whosfree .wt{font-family:"Sora";font-weight:600;font-size:19px;position:relative}
+.whosfree .ws{font-size:12.5px;color:var(--text-dim);margin-top:4px;line-height:1.45;position:relative}
+.whosfree .wrow{display:flex;align-items:center;justify-content:space-between;margin-top:14px;position:relative}
+.sectit{font-family:"Sora";font-weight:600;font-size:19px;margin:2px 4px -4px;letter-spacing:-.01em}
+.ideacard{background:var(--surface);border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:var(--shadow)}
+.ideacard .ph{height:112px;background-size:cover;background-position:center;position:relative}
+.ideacard .ph::after{content:"";position:absolute;inset:0;background:linear-gradient(to top,rgba(12,14,18,.55),transparent 55%)}
+.ideacard .ph .tag{position:absolute;top:11px;left:11px;z-index:2}
+.ideacard .ib{padding:13px 14px}
+.ideacard .ib .it{font-weight:700;font-size:15px;letter-spacing:-.01em}
+.ideacard .ib .id{font-size:12.5px;color:var(--text-dim);margin-top:4px;line-height:1.45}
+.ideacard .ib .if{margin-top:11px;display:flex;align-items:center;justify-content:space-between}
+.ev{display:flex;gap:13px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:13px;align-items:center;box-shadow:var(--shadow)}
+.ev .ed{text-align:center;width:42px;flex:none}
+.ev .ed .d{font-family:"Sora";font-weight:600;font-size:20px;line-height:1}
+.ev .ed .m{font-family:var(--mono);font-size:9.5px;font-weight:500;color:var(--accent);text-transform:uppercase;letter-spacing:.06em}
+.ev .einfo{flex:1}.ev .einfo .et{font-weight:700;font-size:14px}
+.ev .einfo .es{font-size:11.5px;color:var(--text-dim);margin-top:3px}
+
+/* YOU */
+.youhead{padding:8px 18px 16px;display:flex;align-items:center;gap:14px}
+.youhead .info .nm{font-family:"Sora";font-weight:600;font-size:23px;letter-spacing:-.01em}
+.youhead .info .ph{font-family:var(--mono);font-size:12px;color:var(--text-dim);margin-top:3px;letter-spacing:.01em}
+.section{margin:0 16px 14px;background:var(--surface);border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:var(--shadow)}
+.section .sectionh{padding:12px 15px 8px;font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--text-faint)}
+.li{display:flex;align-items:center;gap:13px;padding:13px 15px;border-top:1px solid var(--line);cursor:pointer}
+.li:first-of-type{border-top:0}
+.li .lic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;flex:none;background:var(--surface-2);border:1px solid var(--line)}
+.li .lic svg{width:18px;height:18px;stroke-width:2;fill:none}
+.li .lt{flex:1}.li .lt .a{font-weight:600;font-size:14px}.li .lt .b{font-size:11.5px;color:var(--text-dim);margin-top:2px}
+.li .rt{font-size:12px;color:var(--text-faint);font-weight:600;display:flex;align-items:center;gap:6px}
+.chev-r{width:8px;height:8px;border-right:2px solid var(--text-faint);border-top:2px solid var(--text-faint);transform:rotate(45deg)}
+.taste{display:flex;flex-wrap:wrap;gap:7px;padding:13px 15px}
+.tastechip{background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:12.5px;font-weight:500;color:var(--text-dim)}
+.tog{width:42px;height:25px;border-radius:999px;background:var(--surface-3);position:relative;transition:.2s;flex:none;cursor:pointer;border:1px solid var(--line)}
+.tog::after{content:"";position:absolute;top:2.5px;left:2.5px;width:19px;height:19px;border-radius:50%;background:#cfd3da;transition:.2s}
+.tog.on{background:var(--accent);border-color:var(--accent)}.tog.on::after{left:19px;background:var(--accent-ink)}
+.capwrap{padding:14px 15px}
+.capwrap .capr{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:11px}
+.capwrap .capr .v{font-family:"Sora";font-weight:600;font-size:22px;color:var(--accent)}
+.slider{height:5px;background:var(--surface-3);border-radius:999px;position:relative}
+.slider .fill{height:100%;width:42%;background:var(--accent);border-radius:999px;box-shadow:0 0 10px var(--accent-glow)}
+.slider .knob{position:absolute;top:50%;left:42%;transform:translate(-50%,-50%);width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.5)}
+
+/* OVERLAYS */
+.overlay{position:absolute;inset:0;z-index:40;display:none;flex-direction:column}
+.overlay.active{display:flex;animation:slideup .32s cubic-bezier(.2,.8,.2,1)}
+@keyframes slideup{from{transform:translateY(100%)}to{transform:none}}
+.scrim{position:absolute;inset:0;background:rgba(5,6,9,.6);backdrop-filter:blur(3px)}
+.sheet{margin-top:auto;background:var(--bg-2);border:1px solid var(--line);border-bottom:0;border-radius:26px 26px 40px 40px;position:relative;z-index:2;max-height:92%;display:flex;flex-direction:column;box-shadow:0 -20px 60px rgba(0,0,0,.6)}
+.grab{width:38px;height:4px;border-radius:999px;background:var(--surface-3);margin:11px auto 4px;flex:none}
+.sheeth{padding:6px 18px 12px;display:flex;align-items:center;gap:11px;flex:none}
+.sheeth h2{font-family:"Sora";font-weight:600;font-size:20px;flex:1;letter-spacing:-.01em;margin:0}
+.sheetbody{overflow-y:auto;padding:0 16px 26px;scrollbar-width:none}
+.sheetbody::-webkit-scrollbar{display:none}
+.closeb{width:32px;height:32px;border-radius:50%;background:var(--surface-2);border:1px solid var(--line);display:grid;place-items:center;cursor:pointer;font-size:16px;color:var(--text-dim)}
+.deskstat{display:flex;gap:8px;margin-bottom:16px}
+.deskstat .ds{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;text-align:center}
+.deskstat .ds .k{font-family:var(--mono);font-size:9px;font-weight:500;color:var(--text-faint);text-transform:uppercase;letter-spacing:.06em}
+.deskstat .ds .v{font-family:"Sora";font-weight:600;font-size:18px;margin-top:4px}
+.contingency{background:var(--accent-dim);border:1px solid var(--accent-dim-2);border-radius:14px;padding:13px 14px;margin-bottom:10px}
+.contingency .ct{font-family:var(--mono);font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);display:flex;gap:6px;align-items:center;margin-bottom:8px}
+.cif{font-size:13px;line-height:1.55;display:flex;gap:8px;margin-top:7px;color:var(--text-dim)}
+.cif b{color:var(--text)}
+.cif .arrow{color:var(--accent);font-weight:700;flex:none}
+.logline{display:flex;gap:11px;padding:12px 0;border-bottom:1px solid var(--line)}
+.logline .ldot{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;flex:none;background:var(--accent-dim);border:1px solid var(--accent-dim-2)}
+.logline .ldot svg{width:15px;height:15px;stroke:var(--accent);fill:none;stroke-width:2}
+.logline .lc{flex:1}.logline .lc .a{font-size:13px;font-weight:600}.logline .lc .b{font-family:var(--mono);font-size:10.5px;color:var(--text-faint);margin-top:2px;letter-spacing:.01em}
+.logline .undo{font-size:11.5px;font-weight:700;color:var(--accent);background:none;border:0;cursor:pointer;flex:none;font-family:inherit}
+.smsphone{background:#000;border:1px solid var(--line);border-radius:26px;padding:9px;margin:6px auto 0;max-width:280px;box-shadow:var(--shadow)}
+.smsscreen{background:#fff;border-radius:18px;overflow:hidden;min-height:340px;display:flex;flex-direction:column}
+.smstop{background:#f6f6f6;padding:12px;text-align:center;border-bottom:1px solid #e6e6e6}
+.smstop .nm{font-weight:700;font-size:14px;color:#111}.smstop .sub{font-size:10px;color:#888;font-family:var(--mono)}
+.smsbody{padding:14px 12px;display:flex;flex-direction:column;gap:8px;flex:1;background:#fff}
+.smsin{align-self:flex-start;max-width:82%;background:#E9E9EB;color:#111;border-radius:16px;padding:8px 12px;font-size:12.5px;line-height:1.4}
+.smsin a{color:#0a7cff;text-decoration:none}
+.smsout{align-self:flex-end;max-width:74%;background:#0a7cff;color:#fff;border-radius:16px;padding:8px 12px;font-size:12.5px}
+.smsnote{font-size:11px;color:var(--text-dim);text-align:center;margin-top:12px;line-height:1.55}
+.memrow{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}
+.memrow .mt{flex:1}.memrow .mt .a{font-weight:600;font-size:14px}.memrow .mt .b{font-size:11.5px;color:var(--text-dim);margin-top:2px}
+.permrow{display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--line)}
+.permrow .pt{flex:1}.permrow .pt .a{font-weight:600;font-size:14px}.permrow .pt .b{font-size:11.5px;color:var(--text-dim);margin-top:3px;line-height:1.45}
+.albumgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px}
+.albumgrid .ph{aspect-ratio:1;border-radius:10px;background-size:cover;background-position:center;border:1px solid var(--line)}
+.albumgrid .ph.wide{grid-column:span 2;aspect-ratio:2/1}
+
+.devnote{margin:14px 14px 24px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 15px;font-size:12px;line-height:1.6;color:var(--text-dim)}
+.devnote b{color:var(--accent);font-family:var(--mono);font-weight:500;font-size:10px;letter-spacing:.08em;text-transform:uppercase;display:block;margin-bottom:7px}
+.devnote code{background:var(--surface-3);color:var(--text);padding:1px 5px;border-radius:5px;font-size:11px;font-family:var(--mono)}
+.devnote i{color:var(--text)}
+.caption{font-size:11px;color:var(--text-faint);text-align:center;max-width:340px;line-height:1.6;font-family:var(--mono);letter-spacing:.01em}
+.caption b{color:var(--text-dim);font-weight:500}
+</style>
+
+<div class="stage">
+  <div class="brandline"><span class="mark"></span> <span><b>Plot</b> — group planning, any occasion · tap around</span></div>
+
+  <div class="phone">
+    <div class="screen-wrap">
+      <div class="statusbar">
+        <span>9:41</span>
+        <span class="dots"><span class="bars"><i></i><i></i><i></i><i></i></span><span style="font-size:11px">5G</span><span class="batt"><i></i></span></span>
+      </div>
+
+      <div class="body" id="body">
+
+        <!-- ===== TAB 1: CHATS ===== -->
+        <section class="screen active" data-screen="chats">
+          <div class="hdr">
+            <div class="row" style="justify-content:space-between">
+              <div><h1>Chats</h1><div class="sub">3 groups · Plot's keeping an eye out</div></div>
+              <i class="plot-mark" style="width:38px;height:38px;border-radius:12px"></i>
+            </div>
+          </div>
+          <div class="searchbar">
+            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            Search chats and plans
+          </div>
+          <div class="chatlist">
+
+            <div class="chatrow" onclick="openChat()">
+              <div class="stack"><div class="av m ava-sam">S</div><div class="av m ava-max">M</div><div class="av m ava-jordan">J</div></div>
+              <div class="meta">
+                <div class="top"><span class="name">The Crew 🎲</span><span class="time">NOW</span></div>
+                <div class="last"><b>Plot:</b> Games night's locked for Sat 8pm at Max's — bring-list sorted</div>
+                <div class="chatchips">
+                  <span class="pill warn">Plot needs you · 1 approval</span>
+                  <span class="pill ghost">Sat · 20:00</span>
+                </div>
+              </div>
+              <div class="unread"></div>
+            </div>
+
+            <div class="chatrow" onclick="toast('Demo focuses on “The Crew”. Other chats are stubs.')">
+              <div class="stack"><div class="av m ava-priya">P</div><div class="av m ava-leo">L</div><div class="av m ava-you">Y</div></div>
+              <div class="meta">
+                <div class="top"><span class="name">Lisbon 2026 ✈️</span><span class="time">2H</span></div>
+                <div class="last">Priya: ok the airbnb with the roof terrace is unreal</div>
+                <div class="chatchips"><span class="pill ok">Booked · 4 nights</span><span class="pill ghost">≈ £540pp</span></div>
+              </div>
+            </div>
+
+            <div class="chatrow" onclick="toast('Demo focuses on “The Crew”. Other chats are stubs.')">
+              <div class="stack"><div class="av m ava-max">M</div><div class="av m ava-jordan">J</div><div class="av m ava-sam">S</div><div class="av m ava-you">Y</div></div>
+              <div class="meta">
+                <div class="top"><span class="name">Sunday Run Club 🏃</span><span class="time">YESTERDAY</span></div>
+                <div class="last"><b>Plot:</b> Your weekly run — want me to sort the next one?</div>
+                <div class="chatchips"><span class="pill ghost">Recurring · Sun 09:00</span></div>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="devnote">
+            <b>For the build</b>
+            One friend group = one chat. Plans resolve <i>with or without</i> a booking — surface the resolution state (<code>locked</code> / <code>tickets</code> / <code>booked</code>) and Plot's <code>needs-you</code> flags on the row.
+          </div>
+        </section>
+
+        <!-- ===== TAB 2: GROUP CHAT ===== -->
+        <section class="screen" data-screen="crew">
+          <div class="chathdr">
+            <button class="iconbtn" onclick="show('chats')"><svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></button>
+            <div class="stack" style="margin-right:-3px"><div class="av s ava-sam">S</div><div class="av s ava-max">M</div><div class="av s ava-jordan">J</div></div>
+            <div class="who">
+              <div class="nm">The Crew</div>
+              <div class="st"><span class="dot"></span> Plot locked Saturday</div>
+            </div>
+            <button class="iconbtn" onclick="openSheet('members')"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><circle cx="16.5" cy="9" r="2.6"/><path d="M4 19c0-2.8 2.2-4.5 5-4.5s5 1.7 5 4.5M14 19c0-2 1-3.4 3-3.7"/></svg></button>
+            <button class="iconbtn" onclick="openSheet('album')"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="m4 17 4.5-4 3.5 3 3-2.5L21 17"/></svg></button>
+            <button class="iconbtn" onclick="openSheet('money')"><svg viewBox="0 0 24 24"><path d="M12 3v18M8 7h6a2.5 2.5 0 0 1 0 5H9a2.5 2.5 0 0 0 0 5h7"/></svg></button>
+          </div>
+
+          <div class="planbar" onclick="openSheet('desk')">
+            <i class="plot-mark"></i>
+            <div class="pb-t">
+              <div class="a">Games night · Sat 20:00 · Max's</div>
+              <div class="b">PLOT'S DESK · LOCKED · 5 GOING · NO BOOKING</div>
+            </div>
+            <span class="chev"><svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></span>
+          </div>
+
+          <div class="thread">
+            <div class="daydiv">Today</div>
+
+            <div class="msg"><div class="av s ava-max">M</div><div><div class="stack-name">Max</div><div class="bubble">what are we doing this weekend? could use a night out of the house</div></div></div>
+            <div class="msg"><div class="av s ava-jordan">J</div><div><div class="stack-name">Jordan</div><div class="bubble">down for sat but low energy + broke 🥲 nothing fancy</div></div></div>
+            <div class="msg me"><div><div class="bubble">honestly same. something chill?</div></div></div>
+
+            <div class="plotmsg">
+              <i class="plot-mark s"></i>
+              <div class="col">
+                <div class="nm">Plot <span class="pill plot">checked 4 calendars</span></div>
+                <div class="plotbubble">Everyone's free <b>Saturday after 7</b> 👍 Noted: low-key, and Jordan's keeping it cheap. Here are a few ideas — a mix, some need nothing booked at all:</div>
+              </div>
+            </div>
+
+            <div class="plotmsg">
+              <i class="plot-mark s"></i>
+              <div class="col">
+                <div class="card">
+                  <div class="chead">
+                    <div class="k"><i class="plot-mark xs"></i> 3 ideas · pick one</div>
+                    <div class="t">What should we do Saturday?</div>
+                  </div>
+
+                  <div class="opt lead" onclick="toast('Boosted Games night')">
+                    <span class="crown">TOP</span>
+                    <div class="ophoto" style="background-image:url('https://images.unsplash.com/photo-1606092195730-5d7b9af1efc5?w=200&q=70')"></div>
+                    <div class="oinfo">
+                      <div class="on">Games night at Max's</div>
+                      <div class="od"><span>★ CREW FAVE</span><span>FREE</span><span>0 MI</span></div>
+                      <span class="fit">Fits: low-key, free, easy for Sam's GF snacks</span>
+                      <span class="rtag free">No booking — just bring stuff</span>
+                    </div>
+                    <div class="votecol">
+                      <div class="votebtns"><button class="vbtn up on">↑</button><button class="vbtn down">↓</button></div>
+                      <div class="voters"><div class="stack"><div class="av s ava-you" style="width:18px;height:18px;font-size:8px">Y</div><div class="av s ava-max" style="width:18px;height:18px;font-size:8px">M</div></div>+2</div>
+                    </div>
+                  </div>
+
+                  <div class="opt" onclick="toast('Boosted Lane night')">
+                    <div class="ophoto" style="background-image:url('https://images.unsplash.com/photo-1538511015852-9c0f6e7d8d4d?w=200&q=70')"></div>
+                    <div class="oinfo">
+                      <div class="on">Lane night (bowling + pizza)</div>
+                      <div class="od"><span>★ 4.4</span><span>£14PP</span><span>1.1 MI</span></div>
+                      <span class="fit">Fits: books late, good for 5</span>
+                      <span class="rtag book">Plot books lanes + table</span>
+                    </div>
+                    <div class="votecol">
+                      <div class="votebtns"><button class="vbtn up">↑</button><button class="vbtn down">↓</button></div>
+                      <div class="voters"><div class="av s ava-jordan" style="width:18px;height:18px;font-size:8px">J</div>1</div>
+                    </div>
+                  </div>
+
+                  <div class="opt" onclick="toast('Boosted Cinema')">
+                    <div class="ophoto" style="background-image:url('https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=200&q=70')"></div>
+                    <div class="oinfo">
+                      <div class="on">New release at the cinema</div>
+                      <div class="od"><span>£11PP</span><span>0.8 MI</span><span>20:15 SHOW</span></div>
+                      <span class="rtag book">Plot books 5 seats</span>
+                    </div>
+                    <div class="votecol">
+                      <div class="votebtns"><button class="vbtn up">↑</button><button class="vbtn down">↓</button></div>
+                      <div class="voters faint">0</div>
+                    </div>
+                  </div>
+
+                  <div class="cfoot">
+                    <span class="meta">↑ BOOST · ↓ VETO · 4 OF 5 VOTED</span>
+                    <button class="threadlink" onclick="event.stopPropagation();toast('Opens threaded debate for this choice')">💬 2 replies</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="msg"><div class="av s ava-sam">S</div><div><div class="stack-name">Sam</div><div class="bubble">games night fits the vibe perfectly tbh</div></div></div>
+
+            <div class="plotmsg">
+              <i class="plot-mark s"></i>
+              <div class="col">
+                <div class="nm">Plot</div>
+                <div class="deadline">
+                  <svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 1.5M9 3h6"/></svg>
+                  <span>Games night's leading. I'll <b>lock it for Sat 8pm at Max's</b> by 6pm unless someone shouts. Nothing to book — I'll just sort the headcount &amp; who brings what.</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="plotmsg">
+              <i class="plot-mark s"></i>
+              <div class="col">
+                <div class="nm">Plot</div>
+                <div class="confirm">
+                  <div class="ctop">
+                    <div class="seal"><svg viewBox="0 0 24 24"><path d="M8 11V7a4 4 0 0 1 8 0v4"/><rect x="5" y="11" width="14" height="9" rx="2"/></svg></div>
+                    <div>
+                      <div class="a">Locked — Games night at Max's</div>
+                      <div class="b">No booking needed · added to everyone's calendar</div>
+                    </div>
+                  </div>
+                  <div class="det">
+                    <div class="lr"><span>When</span><span>Sat · 20:00</span></div>
+                    <div class="lr"><span>Where</span><span>Max's place · 22 Elm Rd</span></div>
+                    <div class="lr"><span>Who</span><span>5 going</span></div>
+                  </div>
+                  <div class="cact">
+                    <button class="btn ghost sm" style="flex:1" onclick="toast('Opens map / directions')">Directions</button>
+                    <button class="btn ghost sm" style="flex:1" onclick="openSheet('desk')">Plot's Desk</button>
+                  </div>
+                </div>
+
+                <div class="bring">
+                  <div class="bh">Who's bringing what <span class="pill plot" style="margin-left:auto">Plot sorted it</span></div>
+                  <div class="br"><div class="av s ava-you">Y</div><span class="nm">You</span><span class="it">Drinks 🍷</span></div>
+                  <div class="br"><div class="av s ava-sam">S</div><span class="nm">Sam</span><span class="it">GF snacks 🥨</span></div>
+                  <div class="br"><div class="av s ava-max">M</div><span class="nm">Max</span><span class="it">Hosting + console 🎮</span></div>
+                  <div class="br"><div class="av s ava-priya">P</div><span class="nm">Priya</span><span class="it">Dessert 🍰</span></div>
+                  <div class="br"><div class="av s ava-jordan">J</div><span class="nm">Jordan</span><span class="it none">just turn up · noted</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="plotmsg">
+              <i class="plot-mark s"></i>
+              <div class="col">
+                <div class="splitcard">
+                  <div class="sh"><div class="t">Optional: snacks &amp; drinks run</div><div class="amt">£4 / person</div></div>
+                  <div class="sb">
+                    <div class="splitrow"><div class="av s ava-you">Y</div><span class="nm">You</span><span class="st paid">Chipping in</span></div>
+                    <div class="splitrow"><div class="av s ava-max">M</div><span class="nm">Max</span><span class="st paid">Chipping in</span></div>
+                    <div class="splitrow"><div class="av s ava-jordan">J</div><span class="nm">Jordan</span><span class="st skip">Skipping · all good</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="msg me"><div><div class="bubble">nice one. oh — khruangbin's on the 21st right? we said we'd go</div></div></div>
+            <div class="msg"><div class="av s ava-jordan">J</div><div><div class="stack-name">Jordan</div><div class="bubble">YES grab tickets before they sell out 🙏</div></div></div>
+
+            <div class="plotmsg">
+              <i class="plot-mark s"></i>
+              <div class="col">
+                <div class="nm">Plot</div>
+                <div class="confirm">
+                  <div class="ctop">
+                    <div class="seal"><svg viewBox="0 0 24 24"><path d="m5 13 4 4L19 7"/></svg></div>
+                    <div>
+                      <div class="a">Tickets secured — Khruangbin (open air)</div>
+                      <div class="b">5× via DICE · added to everyone's calendar</div>
+                    </div>
+                  </div>
+                  <div class="det">
+                    <div class="lr"><span>When</span><span>Sat 21 Jun · 19:30</span></div>
+                    <div class="lr"><span>Cost</span><span>£38 / person</span></div>
+                    <div class="lr"><span>Collecting</span><span>3 paid · Plot chasing 2</span></div>
+                  </div>
+                  <div class="cact">
+                    <button class="btn ghost sm" style="flex:1" onclick="openSheet('money')">See split</button>
+                    <button class="btn ghost sm" style="flex:1" onclick="openSheet('desk')">Plot's Desk</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="msg me"><div><div class="bubble">plot you legend 🙌</div></div></div>
+
+          </div>
+
+          <div class="composer">
+            <span class="plus">+</span>
+            <div class="field">Message The Crew…</div>
+            <div class="plotbtn" onclick="toast('@Plot — plan anything: a hangout, an activity, tickets, a trip…')"></div>
+          </div>
+        </section>
+
+        <!-- ===== TAB 3: PLANS ===== -->
+        <section class="screen" data-screen="plans">
+          <div class="hdr"><h1>Plans</h1><div class="sub">Everything you're actually doing, across every group</div></div>
+          <div class="seg"><button class="on">Upcoming</button><button onclick="toast('Past plans + recaps live here')">Past</button></div>
+          <div class="planlist">
+            <div class="dategroup">This week</div>
+
+            <div class="plancard">
+              <div class="pc-top">
+                <div class="when"><div class="d">14</div><div class="m">Jun</div><div class="dow">Sat</div></div>
+                <div class="pinfo">
+                  <div class="ti">Games night at Max's 🎲</div>
+                  <div class="gr">The Crew · 5 going</div>
+                  <div class="ln"><svg viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg> MAX'S PLACE · 20:00</div>
+                </div>
+              </div>
+              <div class="pc-foot"><span class="rsvp">✓ Going · bring: drinks 🍷</span><span class="pill plot">No booking · locked</span></div>
+            </div>
+
+            <div class="plancard">
+              <div class="pc-top">
+                <div class="when"><div class="d">15</div><div class="m">Jun</div><div class="dow">Sun</div></div>
+                <div class="pinfo">
+                  <div class="ti">Morning run + coffee 🏃</div>
+                  <div class="gr">Sunday Run Club · 4 going</div>
+                  <div class="ln"><svg viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg> RIVERSIDE PATH · 09:00</div>
+                </div>
+              </div>
+              <div class="pc-foot"><span class="rsvp">Recurring ritual · auto-planned</span><span class="pill plot">Plot sorting</span></div>
+            </div>
+
+            <div class="dategroup">Later this month</div>
+            <div class="plancard">
+              <div class="pc-top">
+                <div class="when"><div class="d">21</div><div class="m">Jun</div><div class="dow">Sat</div></div>
+                <div class="pinfo">
+                  <div class="ti">Khruangbin — open air 🎶</div>
+                  <div class="gr">The Crew · 5 going</div>
+                  <div class="ln"><svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg> TICKETS BOOKED · £38PP · DICE</div>
+                </div>
+              </div>
+              <div class="pc-foot"><span class="rsvp">✓ Going · ticket in wallet</span><span class="pill ok">Tickets booked</span></div>
+            </div>
+
+            <div class="plancard">
+              <div class="pc-top">
+                <div class="when"><div class="d">11</div><div class="m">Jul</div><div class="dow">Fri</div></div>
+                <div class="pinfo">
+                  <div class="ti">Lisbon — 4 nights ✈️</div>
+                  <div class="gr">Lisbon 2026 · 6 travelling</div>
+                  <div class="ln"><svg viewBox="0 0 24 24"><path d="M2 16l20-7-7 13-2-6-6-2z"/></svg> FLIGHTS + AIRBNB · ≈ £540PP</div>
+                </div>
+              </div>
+              <div class="pc-foot"><span class="rsvp">Trip mode · itinerary in progress</span><span class="pill warn">2 things need you</span></div>
+            </div>
+          </div>
+
+          <div class="devnote">
+            <b>For the build</b>
+            Unified cross-group calendar spanning every occasion type. Each card shows its resolution state — <code>locked</code> (no booking), <code>tickets</code>, <code>booked</code>, <code>trip</code> — plus RSVP and, on the day, a live badge.
+          </div>
+        </section>
+
+        <!-- ===== TAB 4: DISCOVER ===== -->
+        <section class="screen" data-screen="discover">
+          <div class="hdr"><h1>Discover</h1><div class="sub">Tuned to your groups' taste &amp; season</div></div>
+          <div class="disc">
+
+            <div class="whosfree">
+              <div class="wt">Who's around right now?</div>
+              <div class="ws">Broadcast you're free tonight to The Crew. Plot pings whoever's also up for it.</div>
+              <div class="wrow">
+                <div class="stack"><span class="av s ava-you">Y</span></div>
+                <button class="btn primary sm" onclick="toast('Broadcast sent → Plot gathers who is in')">I'm free →</button>
+              </div>
+            </div>
+
+            <div class="plotmsg">
+              <i class="plot-mark s"></i>
+              <div class="col"><div class="plotbubble">It's been <b>3 weeks</b> since The Crew did something — and everyone's free <b>Thursday</b>. Want me to plan something? <button class="btn plot sm" style="margin-top:9px" onclick="openChat()">Plan Thursday</button></div></div>
+            </div>
+
+            <div class="sectit">Ideas for The Crew</div>
+
+            <div class="ideacard">
+              <div class="ph" style="background-image:url('https://images.unsplash.com/photo-1535131749006-b7f58c99034b?w=400&q=70')">
+                <span class="pill plot tag">3 you haven't done</span>
+              </div>
+              <div class="ib">
+                <div class="it">Crazy golf + street food 🏌️</div>
+                <div class="id">New spot 1.1mi away — books out fast on weekends. Matches your low-key, hands-on streak.</div>
+                <div class="if"><span class="muted" style="font-size:11px;font-family:var(--mono)">★ 4.6 · £12PP · THU–SUN</span><button class="btn primary sm" onclick="openChat()">Suggest →</button></div>
+              </div>
+            </div>
+
+            <div class="sectit">On near you</div>
+
+            <div class="ev">
+              <div class="ed"><div class="d">28</div><div class="m">Jun</div></div>
+              <div class="einfo"><div class="et">Street food festival</div><div class="es">Great weather forecast · Sam wishlisted this</div></div>
+              <button class="btn ghost sm" onclick="toast('Plot checks who is keen + sorts the day')">Check</button>
+            </div>
+            <div class="ev">
+              <div class="ed"><div class="d">05</div><div class="m">Jul</div></div>
+              <div class="einfo"><div class="et">Sunday Lates at the museum</div><div class="es">Late opening + DJ · 2 of you saved it</div></div>
+              <button class="btn ghost sm" onclick="toast('Added to Discover radar')">Check</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== TAB 5: YOU ===== -->
+        <section class="screen" data-screen="you">
+          <div class="hdr"><h1>You</h1></div>
+          <div class="youhead">
+            <div class="av lg ava-you">Y</div>
+            <div class="info"><div class="nm">You (Alex)</div><div class="ph">+44 7700 •••321 · 3 GROUPS</div></div>
+          </div>
+
+          <div class="section">
+            <div class="sectionh">Your taste</div>
+            <div class="taste">
+              <span class="tastechip">🎲 Games & low-key</span><span class="tastechip">🌿 Veggie-friendly</span>
+              <span class="tastechip">💸 Budget-conscious</span><span class="tastechip">🎶 Live music</span>
+              <span class="tastechip">🚶 Walkable</span><span class="tastechip">🌅 Mornings</span>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="sectionh">Connected accounts</div>
+            <div class="li">
+              <div class="lic"><svg viewBox="0 0 24 24" style="stroke:#4C8DFF"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9h18M8 2.5v4M16 2.5v4"/></svg></div>
+              <div class="lt"><div class="a">Google Calendar</div><div class="b">Busy/free only · Plot can't see event details</div></div>
+              <div class="rt"><span class="pill ok">On</span></div>
+            </div>
+            <div class="li">
+              <div class="lic"><svg viewBox="0 0 24 24" style="stroke:var(--accent)"><rect x="3" y="6" width="18" height="12" rx="3"/><path d="M3 10h18"/></svg></div>
+              <div class="lt"><div class="a">Apple Pay · Monzo</div><div class="b">Used for splits &amp; tickets</div></div>
+              <div class="rt"><span class="pill ok">On</span></div>
+            </div>
+            <div class="li" onclick="toast('Connect Spotify for the group playlist')">
+              <div class="lic"><svg viewBox="0 0 24 24" style="stroke:#39D98A"><circle cx="12" cy="12" r="9"/><path d="M8 10c3-1 6-.5 8 1M8 13c2.5-.7 5-.3 6.5.8"/></svg></div>
+              <div class="lt"><div class="a">Spotify</div><div class="b">Collaborative night playlist</div></div>
+              <div class="rt">Connect <span class="chev-r"></span></div>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="sectionh">What Plot may do on its own</div>
+            <div class="permrow"><div class="pt"><div class="a">Lock plans &amp; set the bring-list</div><div class="b">Resolve when the group agrees</div></div><div class="tog on" onclick="this.classList.toggle('on')"></div></div>
+            <div class="permrow"><div class="pt"><div class="a">Book &amp; buy tickets</div><div class="b">Reservations, lanes, tickets when a plan needs them</div></div><div class="tog on" onclick="this.classList.toggle('on')"></div></div>
+            <div class="permrow"><div class="pt"><div class="a">Add plans to my calendar</div><div class="b">Tentative holds + confirmed events</div></div><div class="tog on" onclick="this.classList.toggle('on')"></div></div>
+            <div class="permrow"><div class="pt"><div class="a">Text non-members</div><div class="b">SMS people in the plan who aren't on Plot</div></div><div class="tog on" onclick="this.classList.toggle('on')"></div></div>
+            <div class="permrow" style="border-bottom:0"><div class="pt"><div class="a">Auto-rebook if plans change</div><div class="b">Use the agreed backup option</div></div><div class="tog" onclick="this.classList.toggle('on')"></div></div>
+            <div class="capwrap" style="border-top:1px solid var(--line)">
+              <div class="capr"><span style="font-weight:600;font-size:14px">Spend cap before asking me</span><span class="v">£40</span></div>
+              <div class="slider"><div class="fill"></div><div class="knob"></div></div>
+              <div class="b muted" style="font-size:11.5px;margin-top:9px">Anything over £40 pauses for your approval. Everything Plot does is logged &amp; reversible.</div>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="sectionh">Plot's voice in your groups</div>
+            <div class="permrow" style="border-bottom:0"><div class="pt"><div class="a">Personality</div><div class="b">From nearly-invisible to chatty</div></div><span class="pill ghost">Helpful, quiet</span></div>
+          </div>
+          <div style="height:30px"></div>
+        </section>
+
+      </div><!-- /body -->
+
+      <!-- ===== OVERLAYS ===== -->
+
+      <!-- Plot's Desk -->
+      <div class="overlay" data-overlay="desk">
+        <div class="scrim" onclick="closeSheet()"></div>
+        <div class="sheet">
+          <div class="grab"></div>
+          <div class="sheeth"><i class="plot-mark"></i><h2>Plot's Desk</h2><button class="closeb" onclick="closeSheet()">✕</button></div>
+          <div class="sheetbody">
+            <div class="muted" style="font-size:12.5px;margin:-2px 0 16px;line-height:1.55">The plan running quietly under the chat. Live state, contingencies, and a log of everything Plot did — each item reversible.</div>
+
+            <div class="deskstat">
+              <div class="ds"><div class="k">Status</div><div class="v" style="color:var(--accent)">Locked</div></div>
+              <div class="ds"><div class="k">To book</div><div class="v">0</div></div>
+              <div class="ds"><div class="k">Spent</div><div class="v">£0</div></div>
+            </div>
+
+            <div class="dategroup" style="margin:4px 2px 8px">Self-enforcing contingencies</div>
+            <div class="contingency">
+              <div class="ct">⚙ If something changes, Plot will…</div>
+              <div class="cif"><span class="arrow">→</span><span>If <b>Max can't host</b>, switch to the backup (Lane night) and book it.</span></div>
+              <div class="cif"><span class="arrow">→</span><span>If <b>someone drops</b>, update the headcount and re-balance the bring-list.</span></div>
+              <div class="cif"><span class="arrow">→</span><span>If the <b>gig sells out</b> before everyone's paid, hold what I can and tell the group.</span></div>
+            </div>
+
+            <div class="dategroup" style="margin:16px 2px 4px">Activity log · everything's reversible</div>
+
+            <div class="logline">
+              <div class="ldot"><svg viewBox="0 0 24 24"><path d="M8 11V7a4 4 0 0 1 8 0v4"/><rect x="5" y="11" width="14" height="9" rx="2"/></svg></div>
+              <div class="lc"><div class="a">Locked plan · Games night at Max's</div><div class="b">Today 17:58 · no booking needed</div></div>
+              <button class="undo" onclick="toast('Unlocked + reopened the vote')">Undo</button>
+            </div>
+            <div class="logline">
+              <div class="ldot"><svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9h18"/></svg></div>
+              <div class="lc"><div class="a">Added to 5 calendars</div><div class="b">Today 17:58 · tentative → confirmed</div></div>
+              <button class="undo" onclick="toast('Removed from calendars')">Undo</button>
+            </div>
+            <div class="logline">
+              <div class="ldot"><svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h12"/></svg></div>
+              <div class="lc"><div class="a">Set the bring-list</div><div class="b">Today 17:59 · drinks, GF snacks, dessert, console</div></div>
+              <button class="undo" onclick="toast('Cleared the bring-list')">Undo</button>
+            </div>
+            <div class="logline">
+              <div class="ldot"><svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
+              <div class="lc"><div class="a">Booked 5× Khruangbin · DICE</div><div class="b">Today 18:04 · £38pp · within your £40 cap</div></div>
+              <button class="undo" onclick="toast('Refund requested + tickets released')">Undo</button>
+            </div>
+            <div class="logline" style="border-bottom:0">
+              <div class="ldot"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+              <div class="lc"><div class="a">Texted Jordan (non-user)</div><div class="b">Today 18:05 · RSVP + optional snacks link</div></div>
+              <button class="undo faint" style="color:var(--text-faint)">Sent</button>
+            </div>
+
+            <div class="contingency" style="background:var(--warn-dim);border-color:rgba(242,178,92,.25);margin-top:16px">
+              <div class="ct" style="color:var(--warn)">✋ Waiting on you</div>
+              <div class="cif"><span class="arrow" style="color:var(--warn)">→</span><span>Book a private karaoke room after games night? That's <b>£72pp</b> — over your £40 cap.</span></div>
+              <div style="display:flex;gap:8px;margin-top:11px">
+                <button class="btn primary sm" style="flex:1" onclick="toast('Approved → Plot books the room')">Approve</button>
+                <button class="btn ghost sm" style="flex:1" onclick="closeSheet()">Not now</button>
+              </div>
+            </div>
+            <div style="height:14px"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Money -->
+      <div class="overlay" data-overlay="money">
+        <div class="scrim" onclick="closeSheet()"></div>
+        <div class="sheet">
+          <div class="grab"></div>
+          <div class="sheeth"><h2>Money — The Crew</h2><button class="closeb" onclick="closeSheet()">✕</button></div>
+          <div class="sheetbody">
+            <div class="card" style="margin-bottom:14px;border-color:var(--accent-dim-2)">
+              <div style="padding:18px;text-align:center;position:relative;overflow:hidden">
+                <div style="position:absolute;inset:0;background:radial-gradient(420px 120px at 50% -20%,rgba(95,230,193,.12),transparent)"></div>
+                <div class="faint" style="font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;position:relative">You're all square</div>
+                <div style="font-family:'Sora';font-weight:600;font-size:36px;color:var(--accent);margin-top:6px;position:relative">£0.00</div>
+                <div class="muted" style="font-size:12px;position:relative">Plot settles each hangout automatically — booking or not</div>
+              </div>
+            </div>
+
+            <div class="dategroup" style="margin:4px 2px 8px">Khruangbin · 5 tickets</div>
+            <div class="splitcard" style="margin-bottom:16px">
+              <div class="sh"><div class="t">£190 · even split</div><div class="amt">£38 / person</div></div>
+              <div class="sb">
+                <div class="splitrow"><div class="av s ava-you">Y</div><span class="nm">You</span><span class="st paid">Paid · Apple Pay</span></div>
+                <div class="splitrow"><div class="av s ava-max">M</div><span class="nm">Max</span><span class="st paid">Paid · Monzo</span></div>
+                <div class="splitrow"><div class="av s ava-sam">S</div><span class="nm">Sam</span><span class="st paid">Paid</span></div>
+                <div class="splitrow"><div class="av s ava-priya">P</div><span class="nm">Priya</span><span class="st due">Reminded</span></div>
+                <div class="splitrow"><div class="av s ava-jordan">J</div><span class="nm">Jordan · SMS</span><span class="st due">Link sent</span></div>
+              </div>
+            </div>
+
+            <div class="dategroup" style="margin:4px 2px 8px">Sat · games night snacks (optional)</div>
+            <div class="splitcard" style="margin-bottom:16px">
+              <div class="sh"><div class="t">£20 · split by those chipping in</div><div class="amt">£4 / person</div></div>
+              <div class="sb">
+                <div class="splitrow"><div class="av s ava-you">Y</div><span class="nm">You</span><span class="st paid">Paid</span></div>
+                <div class="splitrow"><div class="av s ava-max">M</div><span class="nm">Max</span><span class="st paid">Paid</span></div>
+                <div class="splitrow"><div class="av s ava-jordan">J</div><span class="nm">Jordan</span><span class="st skip">Skipping</span></div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div style="padding:13px 15px;display:flex;gap:11px;align-items:center">
+                <i class="plot-mark s"></i>
+                <div class="muted" style="font-size:12.5px;line-height:1.55">Deposits &amp; escrow run through <b style="color:var(--text)">Stripe Connect</b> — Plot never holds your money directly. Fair-share: even, by-item, or "treat". Plenty of plans need no money at all.</div>
+              </div>
+            </div>
+            <div style="height:14px"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Members -->
+      <div class="overlay" data-overlay="members">
+        <div class="scrim" onclick="closeSheet()"></div>
+        <div class="sheet">
+          <div class="grab"></div>
+          <div class="sheeth"><h2>The Crew · 5 members</h2><button class="closeb" onclick="closeSheet()">✕</button></div>
+          <div class="sheetbody">
+            <div class="memrow"><div class="av m ava-you">Y</div><div class="mt"><div class="a">You (Alex)</div><div class="b">Admin · can change Plot's permissions</div></div><span class="pill ghost">Admin</span></div>
+            <div class="memrow"><div class="av m ava-max">M</div><div class="mt"><div class="a">Max</div><div class="b">On Plot · usually hosts</div></div></div>
+            <div class="memrow"><div class="av m ava-sam">S</div><div class="mt"><div class="a">Sam</div><div class="b">On Plot · 🌿 gluten-free (Plot filters)</div></div></div>
+            <div class="memrow"><div class="av m ava-priya">P</div><div class="mt"><div class="a">Priya</div><div class="b">On Plot</div></div></div>
+            <div class="memrow" style="border-bottom:0"><div class="av m" style="background:#5a6270;color:#fff">J</div><div class="mt"><div class="a">Jordan</div><div class="b">Not on Plot · votes, RSVPs &amp; pays by SMS</div></div><span class="pill warn">Non-user</span></div>
+
+            <button class="btn ghost" style="width:100%;margin:14px 0 18px" onclick="openSheet('sms')">👀 Preview how Jordan sees this (SMS)</button>
+
+            <div class="dategroup" style="margin:4px 2px 6px">Invite</div>
+            <div class="card">
+              <div class="li" onclick="toast('Share link copied')"><div class="lic"><svg viewBox="0 0 24 24" style="stroke:var(--accent)"><path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1"/></svg></div><div class="lt"><div class="a">Shareable link</div><div class="b">No install needed to vote &amp; RSVP</div></div><span class="chev-r"></span></div>
+              <div class="li" onclick="toast('Bring Plot into an existing thread (SMS/RCS, Telegram, Discord, Slack)')"><div class="lic"><svg viewBox="0 0 24 24" style="stroke:var(--accent)"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div class="lt"><div class="a">Add Plot to a chat you already use</div><div class="b">SMS/RCS · Telegram · Discord · Slack</div></div><span class="chev-r"></span></div>
+            </div>
+            <div style="height:14px"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SMS preview -->
+      <div class="overlay" data-overlay="sms">
+        <div class="scrim" onclick="closeSheet()"></div>
+        <div class="sheet">
+          <div class="grab"></div>
+          <div class="sheeth"><button class="closeb" onclick="openSheet('members')" style="font-size:19px">‹</button><h2>Non-user view</h2><button class="closeb" onclick="closeSheet()">✕</button></div>
+          <div class="sheetbody">
+            <div class="muted" style="font-size:12.5px;margin:-2px 0 6px;line-height:1.55">The make-or-break adoption mechanic: Jordan never installs anything. He votes, RSVPs and (optionally) pays straight from SMS.</div>
+            <div class="smsphone">
+              <div class="smsscreen">
+                <div class="smstop"><div class="nm">Plot</div><div class="sub">TEXT MESSAGE · VIA THE CREW</div></div>
+                <div class="smsbody">
+                  <div class="smsin">Hey Jordan! The Crew's sorting Saturday. Vote on what to do 👉 <a>plot.to/v/9fx2</a></div>
+                  <div class="smsout">1 (games night)</div>
+                  <div class="smsin">Games night at Max's it is 🎲 Sat 8pm, 22 Elm Rd. RSVP? Reply <b>YES</b>/<b>NO</b></div>
+                  <div class="smsout">YES</div>
+                  <div class="smsin">You're in 🙌 No booking, just turn up. Chipping in for snacks is optional — £4 if you want: <a>plot.to/p/9fx2</a></div>
+                  <div class="smsout">all good, skipping 😄</div>
+                </div>
+              </div>
+            </div>
+            <div class="smsnote">Same plan object, two surfaces. Plot reconciles SMS votes, RSVPs &amp; payments back into the group thread in real time.</div>
+            <div style="height:8px"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Album -->
+      <div class="overlay" data-overlay="album">
+        <div class="scrim" onclick="closeSheet()"></div>
+        <div class="sheet">
+          <div class="grab"></div>
+          <div class="sheeth"><h2>The Crew · shared album</h2><button class="closeb" onclick="closeSheet()">✕</button></div>
+          <div class="sheetbody">
+            <div class="card" style="margin-bottom:14px;border-color:var(--accent-dim-2);overflow:hidden">
+              <div style="padding:17px;position:relative;overflow:hidden">
+                <div style="position:absolute;right:-30px;top:-30px;width:130px;height:130px;border-radius:50%;background:radial-gradient(circle,rgba(95,230,193,.16),transparent 70%)"></div>
+                <div style="font-family:'Sora';font-weight:600;font-size:20px;position:relative">Your year together ✨</div>
+                <div style="font-size:12.5px;color:var(--text-dim);margin-top:4px;line-height:1.45;position:relative">24 hangouts · 3 cities · 412 photos. Your Wrapped-style recap is ready.</div>
+                <button class="btn primary sm" style="margin-top:13px;position:relative" onclick="toast('Plays the shareable recap')">Watch recap →</button>
+              </div>
+            </div>
+            <div class="dategroup" style="margin:4px 2px 8px">Auto-collected · recent hangouts</div>
+            <div class="albumgrid">
+              <div class="ph wide" style="background-image:url('https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=400&q=70')"></div>
+              <div class="ph" style="background-image:url('https://images.unsplash.com/photo-1606092195730-5d7b9af1efc5?w=300&q=70')"></div>
+              <div class="ph" style="background-image:url('https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&q=70')"></div>
+              <div class="ph" style="background-image:url('https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&q=70')"></div>
+              <div class="ph" style="background-image:url('https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=300&q=70')"></div>
+              <div class="ph" style="background-image:url('https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=300&q=70')"></div>
+              <div class="ph" style="background-image:url('https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=300&q=70')"></div>
+            </div>
+            <div style="height:14px"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== TAB BAR ===== -->
+      <div class="tabbar">
+        <button class="tab on" data-tab="chats" onclick="show('chats')">
+          <span class="ico"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="flag"></span></span>
+          Chats
+        </button>
+        <button class="tab" data-tab="plans" onclick="show('plans')">
+          <span class="ico"><svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9h18M8 2.5v4M16 2.5v4"/></svg></span>
+          Plans
+        </button>
+        <button class="tab" data-tab="discover" onclick="show('discover')">
+          <span class="ico"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7.5"/><path d="m13.5 8.5-1.7 4.3-4.3 1.7 1.7-4.3z"/></svg></span>
+          Discover
+        </button>
+        <button class="tab" data-tab="you" onclick="show('you')">
+          <span class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.6"/><path d="M5 20c0-3.6 3-6 7-6s7 2.4 7 6"/></svg></span>
+          You
+        </button>
+      </div>
+
+      <div id="toast" style="position:absolute;left:50%;bottom:96px;transform:translateX(-50%) translateY(20px);
+        background:var(--surface-3);border:1px solid var(--line-2);color:var(--text);font-size:12.5px;font-weight:500;padding:11px 16px;border-radius:13px;
+        max-width:320px;text-align:center;opacity:0;transition:.25s;z-index:60;pointer-events:none;box-shadow:var(--shadow-lg);line-height:1.4"></div>
+
+    </div><!-- /screen-wrap -->
+  </div><!-- /phone -->
+
+  <div class="caption">SINGLE SELF-CONTAINED HTML FILE · IPHONE 17 (402×874pt) · DARK / PREMIUM THEME. <b>This demo resolves a no-booking games night and books gig tickets — general planning, no restaurant flow required. Tap the green plan bar for Plot's Desk.</b></div>
+</div>
+
+<script>
+  const TAB_OF = { chats:'chats', crew:'chats', plans:'plans', discover:'discover', you:'you' };
+  function show(name){
+    document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('active', s.dataset.screen===name));
+    const tab = TAB_OF[name] || name;
+    document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on', t.dataset.tab===tab));
+    document.getElementById('body').scrollTop = 0;
+    closeSheet();
+  }
+  function openChat(){ show('crew'); }
+  function openSheet(name){ document.querySelectorAll('.overlay').forEach(o=>o.classList.toggle('active', o.dataset.overlay===name)); }
+  function closeSheet(){ document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('active')); }
+  let toastTimer;
+  function toast(msg){
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.style.opacity = 1; t.style.transform = 'translateX(-50%) translateY(0)';
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=>{ t.style.opacity=0; t.style.transform='translateX(-50%) translateY(20px)'; }, 2400);
+  }
+  document.querySelectorAll('.vbtn').forEach(b=>{
+    b.addEventListener('click', e=>{ e.stopPropagation(); if(b.classList.contains('up')){ b.classList.toggle('on'); } });
+  });
+</script>

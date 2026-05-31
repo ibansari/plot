@@ -1,0 +1,339 @@
+openapi: 3.1.0
+info:
+  title: PLOT API
+  version: 0.1.0
+  description: >
+    REST contract for the PLOT vertical slice. Source of truth for the generated Swift client
+    (swift-openapi-generator) and the iOS app. Live plan/chat state is pushed over Socket.IO
+    (not described here); these endpoints cover auth, chat, plan, votes, RSVP and audit/undo.
+servers:
+  - url: http://localhost:3000
+tags:
+  - name: auth
+  - name: chat
+  - name: plan
+  - name: audit
+
+paths:
+  /auth/otp/start:
+    post:
+      tags: [auth]
+      operationId: authOtpStart
+      summary: Begin phone-OTP login (dev mock accepts code 000000)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OtpStartRequest" }
+      responses:
+        "200":
+          description: OTP sent
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OtpStartResponse" }
+  /auth/otp/verify:
+    post:
+      tags: [auth]
+      operationId: authOtpVerify
+      summary: Verify OTP, returns a session JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OtpVerifyRequest" }
+      responses:
+        "200":
+          description: Session
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Session" }
+  /auth/apple:
+    post:
+      tags: [auth]
+      operationId: authApple
+      summary: Sign in with Apple (dev mock returns canned identity)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AppleAuthRequest" }
+      responses:
+        "200":
+          description: Session
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Session" }
+
+  /me:
+    get:
+      tags: [auth]
+      operationId: getMe
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+
+  /threads/{threadId}/messages:
+    get:
+      tags: [chat]
+      operationId: listMessages
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: threadId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Message" }
+    post:
+      tags: [chat]
+      operationId: postMessage
+      summary: Post a human message; triggers the agent graph asynchronously
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: threadId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PostMessageRequest" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Message" }
+
+  /plans/{planId}:
+    get:
+      tags: [plan]
+      operationId: getPlan
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: planId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Plan with options, votes, rsvps, bring-list
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Plan" }
+
+  /plans/{planId}/votes:
+    post:
+      tags: [plan]
+      operationId: castVote
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: planId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CastVoteRequest" }
+      responses:
+        "200":
+          description: Updated plan
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Plan" }
+
+  /plans/{planId}/rsvp:
+    post:
+      tags: [plan]
+      operationId: setRsvp
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: planId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SetRsvpRequest" }
+      responses:
+        "200":
+          description: Updated plan
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Plan" }
+
+  /plans/{planId}/audit:
+    get:
+      tags: [audit]
+      operationId: listAudit
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: planId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Immutable audit log for the plan
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AuditEntry" }
+
+  /audit/{auditId}/undo:
+    post:
+      tags: [audit]
+      operationId: undoAudit
+      summary: Apply the compensating action recorded on an audit row
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: auditId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Result of the compensating action
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UndoResult" }
+
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  schemas:
+    OtpStartRequest:
+      type: object
+      required: [phone]
+      properties: { phone: { type: string } }
+    OtpStartResponse:
+      type: object
+      required: [sent, devHint]
+      properties:
+        sent: { type: boolean }
+        devHint: { type: string, description: "dev only: the code to use (000000)" }
+    OtpVerifyRequest:
+      type: object
+      required: [phone, code]
+      properties:
+        phone: { type: string }
+        code: { type: string }
+    AppleAuthRequest:
+      type: object
+      required: [identityToken]
+      properties:
+        identityToken: { type: string, description: "dev mock ignores value" }
+        displayName: { type: string }
+    Session:
+      type: object
+      required: [token, user]
+      properties:
+        token: { type: string }
+        user: { $ref: "#/components/schemas/User" }
+    User:
+      type: object
+      required: [id, displayName]
+      properties:
+        id: { type: string }
+        displayName: { type: string }
+        phone: { type: string }
+        avatarUrl: { type: string }
+    Message:
+      type: object
+      required: [id, threadId, kind, body, createdAt]
+      properties:
+        id: { type: string }
+        threadId: { type: string }
+        kind: { type: string, enum: [TEXT, SYSTEM, AGENT, DECISION_CARD] }
+        body: { type: string }
+        authorId: { type: string }
+        authorName: { type: string }
+        planId: { type: string }
+        metadata: { type: object, additionalProperties: true }
+        createdAt: { type: string, format: date-time }
+    PostMessageRequest:
+      type: object
+      required: [body]
+      properties: { body: { type: string } }
+    Plan:
+      type: object
+      required: [id, title, state, options, votes, rsvps, bringList, spendCapCents, spentCents]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        state: { type: string, enum: [DRAFT, PROPOSED, VOTING, LOCKED, BOOKED, CANCELLED] }
+        lockedOptionId: { type: string }
+        lockedTime: { type: string, format: date-time }
+        lockedPlace: { type: string }
+        softDeadline: { type: string, format: date-time }
+        spendCapCents: { type: integer }
+        spentCents: { type: integer }
+        options:
+          type: array
+          items: { $ref: "#/components/schemas/PlanOption" }
+        votes:
+          type: array
+          items: { $ref: "#/components/schemas/VoteTally" }
+        rsvps:
+          type: array
+          items: { $ref: "#/components/schemas/RsvpEntry" }
+        bringList:
+          type: array
+          items: { $ref: "#/components/schemas/BringItem" }
+    PlanOption:
+      type: object
+      required: [id, kind, label]
+      properties:
+        id: { type: string }
+        kind: { type: string, enum: [TIME, PLACE, COMBO, ACTIVITY] }
+        label: { type: string }
+        startsAt: { type: string, format: date-time }
+        endsAt: { type: string, format: date-time }
+        place: { type: string }
+        priceTier: { type: integer }
+    VoteTally:
+      type: object
+      required: [optionId, up, down]
+      properties:
+        optionId: { type: string }
+        up: { type: integer }
+        down: { type: integer }
+    RsvpEntry:
+      type: object
+      required: [name, status]
+      properties:
+        name: { type: string }
+        status: { type: string, enum: [YES, NO, MAYBE, PENDING] }
+    BringItem:
+      type: object
+      required: [id, label, generated]
+      properties:
+        id: { type: string }
+        label: { type: string }
+        assigneeName: { type: string }
+        generated: { type: boolean }
+    CastVoteRequest:
+      type: object
+      required: [optionId]
+      properties:
+        optionId: { type: string }
+        value: { type: string, enum: [UP, DOWN, ABSTAIN], default: UP }
+    SetRsvpRequest:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [YES, NO, MAYBE, PENDING] }
+    AuditEntry:
+      type: object
+      required: [id, action, summary, createdAt, undoable]
+      properties:
+        id: { type: string }
+        actor: { type: string }
+        action: { type: string }
+        summary: { type: string }
+        amountCents: { type: integer }
+        undoable: { type: boolean }
+        undoneAt: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
+    UndoResult:
+      type: object
+      required: [ok, action]
+      properties:
+        ok: { type: boolean }
+        action: { type: string }
+        detail: { type: string }

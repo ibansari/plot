@@ -1,0 +1,20 @@
+{
+  "name": "plot",
+  "private": true,
+  "packageManager": "pnpm@9.12.0",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "test": "turbo run test",
+    "seed": "pnpm --filter @plot/db seed",
+    "db:migrate": "pnpm --filter @plot/db prisma:migrate",
+    "demo": "tsx scripts/demo.ts"
+  },
+  "devDependencies": {
+    "@plot/db": "workspace:*",
+    "tsx": "^4.19.1",
+    "turbo": "^2.1.3",
+    "typescript": "^5.6.2"
+  }
+}

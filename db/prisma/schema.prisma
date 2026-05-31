@@ -1,0 +1,447 @@
+// PLOT — source of truth. Implements PRD §18 in full.
+// pgvector is enabled for the Embedding table (agent recall, NEXT TO BUILD).
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector]
+}
+
+// ───────────────────────── enums ─────────────────────────
+
+enum MemberRole {
+  ORGANIZER
+  MEMBER
+  PLOT // the agent participates as a member
+}
+
+enum MessageKind {
+  TEXT
+  SYSTEM // join/leave/etc.
+  AGENT // posted by Plot
+  DECISION_CARD // a plan proposal rendered as a card
+}
+
+enum PlanState {
+  DRAFT
+  PROPOSED
+  VOTING
+  LOCKED
+  BOOKED
+  CANCELLED
+}
+
+enum OptionKind {
+  TIME // a candidate time window
+  PLACE // a candidate venue
+  COMBO // time+place bundled (a "leader" option)
+  ACTIVITY
+}
+
+enum VoteValue {
+  UP
+  DOWN
+  ABSTAIN
+}
+
+enum RsvpStatus {
+  YES
+  NO
+  MAYBE
+  PENDING
+}
+
+enum AuditAction {
+  AGENT_POSTED_MESSAGE
+  AGENT_PROPOSED_PLAN
+  AGENT_OPENED_VOTING
+  AGENT_GATHERED_AVAILABILITY
+  AGENT_RESEARCHED_PLACES
+  AGENT_SENT_NONUSER_INVITE
+  AGENT_LOCKED_PLAN
+  AGENT_GENERATED_BRINGLIST
+  AGENT_REQUESTED_APPROVAL
+  AGENT_SPEND
+  AGENT_BOOKED
+  AGENT_CREATED_SPLIT
+  AGENT_SET_CONTINGENCIES
+  PLAN_UNLOCKED // compensating action
+  BOOKING_CANCELLED // compensating action
+  SPLIT_REFUNDED // compensating action
+}
+
+enum SplitState {
+  DRAFT
+  COLLECTING
+  HELD // escrow hold
+  CAPTURED
+  REFUNDED
+  CANCELLED
+}
+
+enum PermissionScope {
+  CALENDAR_BUSYFREE
+  PLACES_SEARCH
+  SEND_NONUSER_INVITE
+  SPEND_MONEY
+  BOOK_VENUE
+}
+
+// ───────────────────────── identity ─────────────────────────
+
+model User {
+  id          String   @id @default(cuid())
+  phone       String?  @unique
+  appleSub    String?  @unique // Sign in with Apple subject
+  displayName String
+  avatarUrl   String?
+  defaultSpendCapCents Int @default(5000) // "spend cap before asking me" (You tab)
+  createdAt   DateTime @default(now())
+
+  memberships   GroupMember[]
+  messages      Message[]
+  votes         Vote[]
+  rsvps         Rsvp[]
+  devices       Device[]
+  moneyAccount  MoneyAccount?
+  availability  AvailabilityWindow[]
+  permissions   Permission[]
+  integrations  IntegrationConnection[]
+  splitShares   SplitShare[]
+  organizedPlans Plan[]                 @relation("PlanOrganizer")
+}
+
+// A non-user participant (e.g. reached via SMS). Has no login; acts through signed links.
+model Contact {
+  id          String   @id @default(cuid())
+  phone       String   @unique
+  displayName String
+  createdAt   DateTime @default(now())
+
+  memberships GroupMember[]
+  votes       Vote[]
+  rsvps       Rsvp[]
+  tokens      NonUserToken[]
+  splitShares SplitShare[]
+}
+
+model Group {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  members GroupMember[]
+  threads Thread[]
+  plans   Plan[]
+}
+
+model GroupMember {
+  id        String     @id @default(cuid())
+  group     Group      @relation(fields: [groupId], references: [id])
+  groupId   String
+  role      MemberRole @default(MEMBER)
+  // exactly one of userId / contactId is set (a real user, or a non-user contact)
+  user      User?      @relation(fields: [userId], references: [id])
+  userId    String?
+  contact   Contact?   @relation(fields: [contactId], references: [id])
+  contactId String?
+  joinedAt  DateTime   @default(now())
+
+  // constraint memory (§A7): per-member, per-group, editable, can expire.
+  // [{ text, kind: "dietary"|"dislike"|"budget"|"other", expiresAt? }]
+  constraints Json?
+
+  @@unique([groupId, userId])
+  @@unique([groupId, contactId])
+}
+
+// ───────────────────────── chat ─────────────────────────
+
+model Thread {
+  id        String   @id @default(cuid())
+  group     Group    @relation(fields: [groupId], references: [id])
+  groupId   String
+  title     String?
+  createdAt DateTime @default(now())
+
+  messages Message[]
+  plans    Plan[]
+}
+
+model Message {
+  id        String      @id @default(cuid())
+  thread    Thread      @relation(fields: [threadId], references: [id])
+  threadId  String
+  kind      MessageKind @default(TEXT)
+  body      String
+  // author: a user, or Plot (authorUserId null + kind AGENT). Never a Contact in chat.
+  author    User?       @relation(fields: [authorId], references: [id])
+  authorId  String?
+  // optional link to the plan a DECISION_CARD renders
+  plan      Plan?       @relation(fields: [planId], references: [id])
+  planId    String?
+  metadata  Json? // e.g. decision-card payload, approval-request payload
+  createdAt DateTime    @default(now())
+
+  @@index([threadId, createdAt])
+}
+
+// ───────────────────────── plan (§10) ─────────────────────────
+
+model Plan {
+  id        String    @id @default(cuid())
+  group     Group     @relation(fields: [groupId], references: [id])
+  groupId   String
+  thread    Thread    @relation(fields: [threadId], references: [id])
+  threadId  String
+  title     String
+  state     PlanState @default(DRAFT)
+
+  organizer   User?   @relation("PlanOrganizer", fields: [organizerId], references: [id])
+  organizerId String?
+
+  // resolution (§10: LOCKED = time+place+RSVP). Set on lock.
+  lockedOptionId String?
+  lockedTime     DateTime?
+  lockedPlace    String?
+
+  // booking (additive enrichment on a LOCKED plan; degrades gracefully when no integration)
+  bookingRef      String?
+  bookingFallback Json? // { kind: "call"|"link", value, label } when booking degrades
+
+  // self-enforcing contingencies shown on Plot's Desk
+  contingencies   Json? // [{ ifText, thenText, type, backupOptionId? }]
+
+  // trust model (§13)
+  spendCapCents Int     @default(5000)
+  spentCents    Int     @default(0)
+  surpriseMode  Boolean @default(false) // never broadcast
+  softDeadline  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  options   PlanOption[]
+  votes     Vote[]
+  rsvps     Rsvp[]
+  bringList BringItem[]
+  messages  Message[]
+  audits    AuditLog[]
+  splits    Split[]
+
+  @@index([groupId, state])
+}
+
+model PlanOption {
+  id        String     @id @default(cuid())
+  plan      Plan       @relation(fields: [planId], references: [id])
+  planId    String
+  kind      OptionKind
+  label     String
+  // structured detail depending on kind (start/end for TIME, address/priceTier for PLACE)
+  startsAt  DateTime?
+  endsAt    DateTime?
+  place     String?
+  priceTier Int? // 1..4 ($..$$$$), drives spend-cap estimate
+  metadata  Json?
+  createdAt DateTime   @default(now())
+
+  votes Vote[]
+
+  @@index([planId])
+}
+
+model Vote {
+  id        String     @id @default(cuid())
+  plan      Plan       @relation(fields: [planId], references: [id])
+  planId    String
+  option    PlanOption @relation(fields: [optionId], references: [id])
+  optionId  String
+  value     VoteValue  @default(UP)
+  // voter is a user OR a non-user contact (reconciled from a signed link)
+  user      User?      @relation(fields: [userId], references: [id])
+  userId    String?
+  contact   Contact?   @relation(fields: [contactId], references: [id])
+  contactId String?
+  viaToken  String? // NonUserToken.id when cast over the web bridge
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@unique([optionId, userId])
+  @@unique([optionId, contactId])
+  @@index([planId])
+}
+
+model Rsvp {
+  id        String     @id @default(cuid())
+  plan      Plan       @relation(fields: [planId], references: [id])
+  planId    String
+  status    RsvpStatus @default(PENDING)
+  user      User?      @relation(fields: [userId], references: [id])
+  userId    String?
+  contact   Contact?   @relation(fields: [contactId], references: [id])
+  contactId String?
+  updatedAt DateTime   @updatedAt
+
+  @@unique([planId, userId])
+  @@unique([planId, contactId])
+}
+
+model BringItem {
+  id          String   @id @default(cuid())
+  plan        Plan     @relation(fields: [planId], references: [id])
+  planId      String
+  label       String
+  assigneeId  String? // GroupMember.id (nullable = unassigned)
+  generated   Boolean  @default(true) // auto-generated by Plot
+  createdAt   DateTime @default(now())
+
+  @@index([planId])
+}
+
+// ───────────────────────── availability (busy/free ONLY, §13) ─────────────────────────
+
+model AvailabilityWindow {
+  id       String   @id @default(cuid())
+  user     User     @relation(fields: [userId], references: [id])
+  userId   String
+  // NOTE: no title/details column by design — calendars store busy/free only.
+  startsAt DateTime
+  endsAt   DateTime
+  busy     Boolean  @default(true)
+  source   String   @default("eventkit") // eventkit | google | manual
+  createdAt DateTime @default(now())
+
+  @@index([userId, startsAt])
+}
+
+// ───────────────────────── trust / audit (§13) ─────────────────────────
+
+model Permission {
+  id        String          @id @default(cuid())
+  user      User?           @relation(fields: [userId], references: [id])
+  userId    String?
+  groupId   String? // group-level grants
+  scope     PermissionScope
+  granted   Boolean         @default(true)
+  createdAt DateTime        @default(now())
+
+  @@unique([userId, groupId, scope])
+}
+
+// Immutable. Every autonomous action writes one row carrying a typed `undo` descriptor.
+model AuditLog {
+  id        String      @id @default(cuid())
+  plan      Plan?       @relation(fields: [planId], references: [id])
+  planId    String?
+  actor     String      @default("plot") // "plot" or a userId
+  action    AuditAction
+  summary   String
+  payload   Json // what was done
+  undo      Json? // compensating-action descriptor; null = nothing to undo
+  undoneAt  DateTime? // set when the compensating action is applied
+  amountCents Int       @default(0) // for AGENT_SPEND, counts against the cap
+  createdAt DateTime    @default(now())
+
+  @@index([planId, createdAt])
+}
+
+// ───────────────────────── money (split/escrow) ─────────────────────────
+
+model MoneyAccount {
+  id              String  @id @default(cuid())
+  user            User    @relation(fields: [userId], references: [id])
+  userId          String  @unique
+  provider        String  @default("mock") // mock | stripe
+  externalAcctId  String? // Stripe Connect acct id (TODO: REAL)
+  createdAt       DateTime @default(now())
+}
+
+model Split {
+  id          String     @id @default(cuid())
+  plan        Plan       @relation(fields: [planId], references: [id])
+  planId      String
+  state       SplitState @default(DRAFT)
+  totalCents  Int
+  memo        String?
+  externalRef String? // PaymentIntent / escrow ref (mock generates one)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  shares SplitShare[]
+
+  @@index([planId])
+}
+
+model SplitShare {
+  id        String   @id @default(cuid())
+  split     Split    @relation(fields: [splitId], references: [id])
+  splitId   String
+  amountCents Int
+  paid      Boolean  @default(false)
+  user      User?    @relation(fields: [userId], references: [id])
+  userId    String?
+  contact   Contact? @relation(fields: [contactId], references: [id])
+  contactId String?
+
+  @@index([splitId])
+}
+
+// ───────────────────────── non-user bridge ─────────────────────────
+
+// A signed, single-purpose link issued to a Contact (vote / rsvp / pay).
+model NonUserToken {
+  id        String   @id @default(cuid())
+  contact   Contact  @relation(fields: [contactId], references: [id])
+  contactId String
+  planId    String
+  purpose   String   @default("vote") // vote | rsvp | pay
+  signature String // HMAC over (id|contactId|planId|purpose)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([contactId])
+}
+
+// ───────────────────────── devices / integrations / recall ─────────────────────────
+
+model Device {
+  id         String   @id @default(cuid())
+  user       User     @relation(fields: [userId], references: [id])
+  userId     String
+  apnsToken  String // mock token in dev
+  platform   String   @default("ios")
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, apnsToken])
+}
+
+model IntegrationConnection {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  kind      String // calendar | places | payments
+  provider  String // mock | google | stripe ...
+  scopes    String[]
+  createdAt DateTime @default(now())
+
+  @@unique([userId, kind])
+}
+
+// pgvector store for agent recall (NEXT TO BUILD: wire a `recall` tool).
+model Embedding {
+  id        String                      @id @default(cuid())
+  groupId   String
+  kind      String // preference | place | summary
+  text      String
+  embedding Unsupported("vector(1536)")?
+  createdAt DateTime                     @default(now())
+
+  @@index([groupId])
+}

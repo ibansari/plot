@@ -1,0 +1,38 @@
+# xcodegen spec → generates Plot.xcodeproj (a runnable iOS app) from the SwiftUI sources in Plot/.
+# Usage:  cd ios && xcodegen generate && open Plot.xcodeproj   (or build via xcodebuild)
+name: Plot
+options:
+  bundleIdPrefix: com.plot
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGNING_ALLOWED: NO
+targets:
+  Plot:
+    type: application
+    platform: iOS
+    sources:
+      - path: Plot
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.plot.app
+        TARGETED_DEVICE_FAMILY: "1"
+        ENABLE_PREVIEWS: YES
+    info:
+      path: Plot/Info.plist
+      properties:
+        CFBundleDisplayName: Plot
+        UILaunchScreen: {}
+        UIApplicationSupportsIndirectInputEvents: true
+        NSCalendarsUsageDescription: "Plot reads your free/busy times (never event details) to suggest when everyone can meet."
+        # dev only: allow plaintext http to the local API/web + the websocket
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
