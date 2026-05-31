@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
 import { McpGatewayService } from "./mcp-gateway.service";
+import { McpConnectionService } from "./mcp-connection.service";
 import { PrismaService } from "../../common/prisma.service";
 import { AuthGuard, AuthedRequest } from "../../common/auth.guard";
 import { McpRisk, Renderer } from "./mcp.types";
@@ -9,8 +10,15 @@ import { McpRisk, Renderer } from "./mcp.types";
 export class McpController {
   constructor(
     private readonly gateway: McpGatewayService,
+    private readonly connections: McpConnectionService,
     private readonly prisma: PrismaService,
   ) {}
+
+  // ── enable a connector: connect to its MCP server + discover/persist its tools (risk-classified) ──
+  @Post("internal/mcp/connect")
+  connect(@Body() b: { catalogKey: string; serverKey: string; transport: object; groupId?: string; ownerScope?: "MEMBER" | "GROUP" }) {
+    return this.connections.connectAndDiscover(b as never);
+  }
 
   // ── agent: invoke an MCP tool through the gateway. Reads execute; mutations return a preview. ──
   @Post("internal/mcp/invoke")

@@ -17,8 +17,10 @@ import { GooglePlacesProvider as NativeGooglePlaces } from "./maps/google-places
 import { GoogleRoutesProvider } from "./maps/google-routes.provider";
 import { NATIVE_PLACES_PROVIDER, ROUTES_PROVIDER } from "./maps/maps.types";
 // MCP gateway (Slice 2)
-import { McpGatewayService } from "./mcp/mcp-gateway.service";
+import { McpGatewayService, MCP_EXECUTOR } from "./mcp/mcp-gateway.service";
 import { McpRenderService } from "./mcp/mcp-render.service";
+import { McpStdioExecutor } from "./mcp/mcp-stdio.executor";
+import { McpConnectionService } from "./mcp/mcp-connection.service";
 import { McpController } from "./mcp/mcp.controller";
 
 @Module({
@@ -28,6 +30,8 @@ import { McpController } from "./mcp/mcp.controller";
     MapsService,
     McpGatewayService,
     McpRenderService,
+    McpConnectionService,
+    { provide: MCP_EXECUTOR, useClass: McpStdioExecutor },
     { provide: NATIVE_PLACES_PROVIDER, useClass: NativeGooglePlaces },
     { provide: ROUTES_PROVIDER, useClass: GoogleRoutesProvider },
     {
