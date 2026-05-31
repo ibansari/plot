@@ -296,6 +296,7 @@ struct YouView: View {
     @State private var calendar = true
     @State private var textNonusers = true
     @State private var loaded = false
+    @State private var showConnectors = false
 
     var body: some View {
         ScrollView {
@@ -328,8 +329,20 @@ struct YouView: View {
                             .font(Theme.body(11.5)).foregroundStyle(Theme.textDim)
                     }.padding(15).overlay(Rectangle().fill(Theme.line).frame(height: 1), alignment: .top)
                 }
+
+                section("Integrations") {
+                    Button { showConnectors = true } label: {
+                        HStack {
+                            Image(systemName: "puzzlepiece.extension").foregroundStyle(Theme.accent)
+                            Text("Connectors").font(Theme.body(14, .semibold)).foregroundStyle(Theme.text)
+                            Spacer()
+                            Image(systemName: "chevron.right").font(Theme.body(12)).foregroundStyle(Theme.textFaint)
+                        }.padding(15)
+                    }
+                }
             }.padding(.horizontal, 16).padding(.bottom, 24)
         }
+        .sheet(isPresented: $showConnectors) { NavigationStack { ConnectorCatalogView(groupId: "") } }
         .task {
             guard !loaded else { return }
             loaded = true

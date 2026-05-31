@@ -113,6 +113,21 @@ public actor APIClient {
         try await post("/audit/\(auditId)/undo", body: [String: String]())
     }
 
+    // MARK: - Integrations (MCP-first spec)
+    public func saveTravelPreference(_ body: TravelPreferenceBody) async throws -> EmptyResponse {
+        try await post("/me/travel-preference", body: body)
+    }
+    public func mapsFeasibility(groupId: String, query: String, planId: String? = nil, near: String? = nil) async throws -> FeasibilityResult {
+        struct Body: Encodable { let groupId: String; let query: String; let planId: String?; let near: String? }
+        return try await post("/internal/maps/feasibility", body: Body(groupId: groupId, query: query, planId: planId, near: near))
+    }
+    public func connectorCatalog() async throws -> [ConnectorEntry] {
+        try await get("/internal/mcp/catalog")
+    }
+    public func approveExternalAction(approvalId: String) async throws -> EmptyResponse {
+        try await post("/mcp/approvals/\(approvalId)/approve", body: [String: String]())
+    }
+
     // MARK: - transport
     private func get<T: Decodable>(_ path: String) async throws -> T {
         try await send(path, method: "GET", body: Optional<[String: String]>.none)

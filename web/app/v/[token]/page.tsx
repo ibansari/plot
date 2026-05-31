@@ -4,7 +4,12 @@ import { useParams, useSearchParams } from "next/navigation";
 
 const API = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000";
 
-type Option = { id: string; kind: string; label: string; startsAt?: string; place?: string; priceTier?: number };
+type NamedEta = { name: string; mode: string; durationMin: number | null; guardrail: string };
+type Option = {
+  id: string; kind: string; label: string; startsAt?: string; place?: string; priceTier?: number;
+  // named travel ETAs — never origins (spec §Web Guest Surface)
+  travel?: { medianEtaMin?: number | null; namedEtas?: NamedEta[] };
+};
 type VoteTally = { optionId: string; up: number; down: number };
 type Plan = { id: string; title: string; state: string; options: Option[]; votes: VoteTally[]; lockedOptionId?: string; viewerRsvp?: string };
 type PageData = { purpose: string; contactName: string; plan: Plan };
@@ -26,6 +31,23 @@ export default function VotePage() {
   const [picked, setPicked] = useState<string>("");
   const [rsvp, setRsvp] = useState<string>("");
   const [submitted, setSubmitted] = useState(false);
+  const [travelMode, setTravelMode] = useState<string>("AUTO");
+  const [maxEta, setMaxEta] = useState<number>(45);
+  const [travelSaved, setTravelSaved] = useState(false);
+
+  async function submitTravel() {
+    // best-effort: tell the group your travel mode + limit (no location shared)
+    try {
+      await fetch(`${API}/public/tokens/${token}/travel`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ s: sig, mode: travelMode, maxEtaMin: maxEta }),
+      });
+    } catch {
+      /* endpoint optional — preference is non-blocking */
+    }
+    setTravelSaved(true);
+  }
 
   const load = useCallback(async () => {
     try {
@@ -90,6 +112,8 @@ export default function VotePage() {
   const locked = plan.state === "LOCKED" || plan.state === "BOOKED";
   const isRsvp = purpose === "rsvp";
   const canVote = plan.state === "VOTING";
+  const lockedOpt = plan.options.find((o) => o.id === plan.lockedOptionId);
+  const lockedPlace = lockedOpt?.place ?? lockedOpt?.label;
 
   return (
     <div className="wrap">
@@ -117,11 +141,38 @@ export default function VotePage() {
               <div className="meta">
                 {o.kind}{o.startsAt ? ` · ${fmtTime(o.startsAt)}` : ""}{o.priceTier ? ` · ${tier(o.priceTier)}` : ""}
               </div>
+              {o.travel?.namedEtas?.length ? (
+                <div className="meta">
+                  🚗 {o.travel.namedEtas.map((e) => `${e.name} ${e.durationMin ?? "?"}m`).join(" · ")}
+                </div>
+              ) : null}
             </div>
             <div className="tally">▲ {t?.up ?? 0}</div>
           </div>
         );
       })}
+
+      {!isRsvp && canVote && (
+        <div className="card">
+          <div className="label">How are you getting there?</div>
+          <div className="meta" style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+            {["AUTO", "DRIVE", "TRANSIT", "WALK"].map((m) => (
+              <button key={m} className={`btn ${travelMode === m ? "selected" : "secondary"}`} onClick={() => setTravelMode(m)}>{m.toLowerCase()}</button>
+            ))}
+          </div>
+          <div className="meta" style={{ marginTop: 8 }}>Max travel: {maxEta} min</div>
+          <input type="range" min={10} max={120} step={5} value={maxEta} onChange={(e) => setMaxEta(Number(e.target.value))} style={{ width: "100%" }} />
+          <button className="btn secondary" disabled={travelSaved} onClick={submitTravel} style={{ marginTop: 8 }}>
+            {travelSaved ? "Shared ✓" : "Share my travel preference"}
+          </button>
+        </div>
+      )}
+
+      {locked && lockedPlace && (
+        <a className="btn secondary" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(lockedPlace)}`} target="_blank" rel="noreferrer">
+          Open in Google Maps
+        </a>
+      )}
 
       {!isRsvp && canVote && (
         <button className="btn" disabled={!picked || submitted} onClick={submitVote}>
