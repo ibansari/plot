@@ -39,15 +39,16 @@ public enum Theme {
     public static let warnLine = Color(hex: 0xC2701A).opacity(0.28)
     public static let danger = Color(hex: 0xD9544B)
 
-    // Type — Space Grotesk (display), Onest (body), IBM Plex Mono (mono/metadata). System fallback on-weight.
+    // Type — Space Grotesk (display), Onest (body), IBM Plex Mono (mono/metadata).
+    // Bundled via UIAppFonts; names are the CoreText family names. Variable fonts honor .weight().
     public static func display(_ size: CGFloat, _ weight: Font.Weight = .semibold) -> Font {
-        .custom("SpaceGrotesk", size: size).weight(weight)
+        .custom("Space Grotesk", size: size).weight(weight)
     }
     public static func body(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
         .custom("Onest", size: size).weight(weight)
     }
     public static func mono(_ size: CGFloat, _ weight: Font.Weight = .medium) -> Font {
-        .custom("IBMPlexMono", size: size).weight(weight)
+        .custom("IBM Plex Mono", size: size).weight(weight)
     }
 
     /// Deterministic avatar color for a member (matches the mockup's crew palette).

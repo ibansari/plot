@@ -30,6 +30,11 @@ targets:
         CFBundleDisplayName: Plot
         UILaunchScreen: {}
         UIApplicationSupportsIndirectInputEvents: true
+        UIAppFonts:
+          - SpaceGrotesk-VF.ttf
+          - Onest-VF.ttf
+          - IBMPlexMono-Regular.ttf
+          - IBMPlexMono-Medium.ttf
         NSCalendarsUsageDescription: "Plot reads your free/busy times (never event details) to suggest when everyone can meet."
         # dev only: allow plaintext http to the local API/web + the websocket
         NSAppTransportSecurity:
