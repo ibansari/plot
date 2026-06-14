@@ -10,43 +10,55 @@
 		056A431EB34C7058BEF1F68A /* AuthViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89465146E357AE3C9E92C0E /* AuthViewModel.swift */; };
 		074B8DC27603F1D9E053106D /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39D6741973D2C50F6293DF7E /* MainTabView.swift */; };
 		0FB214C4C2CA38CF9B348144 /* IBMPlexMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 9E709B7EE6751F383AC9974A /* IBMPlexMono-Regular.ttf */; };
+		24DF5C7D47F6B48AE726AF60 /* PlanMapViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A98C80D89F7F06640CC767A4 /* PlanMapViewModel.swift */; };
 		398B83D4530C2A6C3711489F /* DecisionCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BCBBEF26398DF81FF1FC088 /* DecisionCardView.swift */; };
 		3ECE3CCA5DF22F043826B281 /* MessageBubble.swift in Sources */ = {isa = PBXBuildFile; fileRef = 888771CFF161F21E30DBD5E2 /* MessageBubble.swift */; };
+		3F36B71641543CC7DA8ABF59 /* ConnectorCatalogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC542D9DF12EBAEB1E7B529F /* ConnectorCatalogView.swift */; };
 		40988162264C812028D4771A /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = B97FF7F754AEE125D3B238CB /* Components.swift */; };
 		473A6B2F08FC86D5C94872B8 /* MembersSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06FCAD3F1A4C823DC0B392E7 /* MembersSheet.swift */; };
 		60D5D3AFDC73891C0D1E9A85 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5593EB7D34C7FBEF36B8D05B /* APIClient.swift */; };
 		7AEBF068CAE14EBFF812D171 /* SignInWithApple.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F1EE8801B59347C7537D81D /* SignInWithApple.swift */; };
 		7B7BE700DA7492BC4976E43B /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FEA32B7BED297B270C140E9 /* Models.swift */; };
 		7EB1C0C3BC0EB51FCE1E30F0 /* OFL-IBMPlexMono.txt in Resources */ = {isa = PBXBuildFile; fileRef = 6E38761CB522BF331B4B5019 /* OFL-IBMPlexMono.txt */; };
+		83D85F626B6F5045274D9C81 /* IntegrationModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CA163790C3704EF6BDEAAE2 /* IntegrationModels.swift */; };
 		902931FE0459AFCB6CAF821C /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2FE72EE91C2819A6D9EBCD9 /* LoginView.swift */; };
 		91FE72E6E9FCF3DCF727BBD2 /* GroupsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E53D9F41A54091A115E3B0A8 /* GroupsViewModel.swift */; };
+		96E0C0001BE4E797111F821E /* ConnectorDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80DEE2235D528E6DD231F44D /* ConnectorDetailView.swift */; };
 		99A962FD96598B375A0A3A24 /* SocketClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6ADEC22FC350C89A28778FC5 /* SocketClient.swift */; };
 		A01D095AFE70B2B13592E05E /* OFL-SpaceGrotesk.txt in Resources */ = {isa = PBXBuildFile; fileRef = F2CCAA9C0A6516E38BED3E45 /* OFL-SpaceGrotesk.txt */; };
+		A153A42A12AA1DBBAD8845C7 /* TravelPreferenceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 479B55B48F75B6565201481A /* TravelPreferenceView.swift */; };
 		A2D2DF449131943C9D9E6ADC /* IBMPlexMono-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F1F5B94E4EF84E23FD54D37E /* IBMPlexMono-Medium.ttf */; };
 		A7436AFBE79DB19C06B213CD /* SpaceGrotesk-VF.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 93CAEA80922AA1196B3A2FBC /* SpaceGrotesk-VF.ttf */; };
 		ABF255C65EC13091384E448B /* OFL-Onest.txt in Resources */ = {isa = PBXBuildFile; fileRef = 988BC6316FFF804352346DF6 /* OFL-Onest.txt */; };
+		AC9133047512701209EB5FE3 /* PlanMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4D28E354BBD69412F826668 /* PlanMapView.swift */; };
 		BBD9B6412A70ABA7A6FE6F56 /* EventKitService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3E5D2FF9C0F04CF0AA0086E /* EventKitService.swift */; };
 		CA2B944FA9F2240B430F399C /* AuditLogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 953528C48EB2B9B0246647B4 /* AuditLogView.swift */; };
 		CCB3FB493719F85C5783A709 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4692147728B75358956CD09F /* RootView.swift */; };
 		D76849BAD455C1591D8FED90 /* ChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E1B10134A139D934B96F6EF /* ChatViewModel.swift */; };
+		DF34ED12FE292805266031A9 /* ExternalActionApprovalSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6A20B231622340109AC439D /* ExternalActionApprovalSheet.swift */; };
 		DF5469A50DD010176675BAAA /* PlotApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BB8DA3BD57B012EE59BB4C4 /* PlotApp.swift */; };
+		EA70DB63F2FFBCAE77AFBEEC /* IntegrationResultCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0386FD3EC7A6AE9ED881A657 /* IntegrationResultCard.swift */; };
 		FAB064BFDDB8E8CCF65B8B0D /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40EC5552FBDEA836DABB2CBA /* Theme.swift */; };
 		FD05CF395A9E9BBC9E891176 /* ThreadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E2B5CF987B8724D6935C39D /* ThreadView.swift */; };
 		FEA6D6A24B4AB1D4024DF264 /* Onest-VF.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 8ED5A4C7E02F975F9AA20E91 /* Onest-VF.ttf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		0386FD3EC7A6AE9ED881A657 /* IntegrationResultCard.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = IntegrationResultCard.swift; sourceTree = "<group>"; };
 		06FCAD3F1A4C823DC0B392E7 /* MembersSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MembersSheet.swift; sourceTree = "<group>"; };
+		2CA163790C3704EF6BDEAAE2 /* IntegrationModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = IntegrationModels.swift; sourceTree = "<group>"; };
 		39D6741973D2C50F6293DF7E /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		3E2B5CF987B8724D6935C39D /* ThreadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreadView.swift; sourceTree = "<group>"; };
 		40EC5552FBDEA836DABB2CBA /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		4692147728B75358956CD09F /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		479B55B48F75B6565201481A /* TravelPreferenceView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TravelPreferenceView.swift; sourceTree = "<group>"; };
 		5593EB7D34C7FBEF36B8D05B /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		5E1B10134A139D934B96F6EF /* ChatViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatViewModel.swift; sourceTree = "<group>"; };
 		6ADEC22FC350C89A28778FC5 /* SocketClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocketClient.swift; sourceTree = "<group>"; };
 		6E38761CB522BF331B4B5019 /* OFL-IBMPlexMono.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "OFL-IBMPlexMono.txt"; sourceTree = "<group>"; };
 		6F1EE8801B59347C7537D81D /* SignInWithApple.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInWithApple.swift; sourceTree = "<group>"; };
 		7BB8DA3BD57B012EE59BB4C4 /* PlotApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlotApp.swift; sourceTree = "<group>"; };
+		80DEE2235D528E6DD231F44D /* ConnectorDetailView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConnectorDetailView.swift; sourceTree = "<group>"; };
 		888771CFF161F21E30DBD5E2 /* MessageBubble.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageBubble.swift; sourceTree = "<group>"; };
 		8BCBBEF26398DF81FF1FC088 /* DecisionCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DecisionCardView.swift; sourceTree = "<group>"; };
 		8ED5A4C7E02F975F9AA20E91 /* Onest-VF.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Onest-VF.ttf"; sourceTree = "<group>"; };
@@ -55,6 +67,8 @@
 		953528C48EB2B9B0246647B4 /* AuditLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuditLogView.swift; sourceTree = "<group>"; };
 		988BC6316FFF804352346DF6 /* OFL-Onest.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "OFL-Onest.txt"; sourceTree = "<group>"; };
 		9E709B7EE6751F383AC9974A /* IBMPlexMono-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexMono-Regular.ttf"; sourceTree = "<group>"; };
+		A6A20B231622340109AC439D /* ExternalActionApprovalSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ExternalActionApprovalSheet.swift; sourceTree = "<group>"; };
+		A98C80D89F7F06640CC767A4 /* PlanMapViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PlanMapViewModel.swift; sourceTree = "<group>"; };
 		AA05BA05D44FBD0C6F809397 /* Plot.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Plot.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B97FF7F754AEE125D3B238CB /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
 		C89465146E357AE3C9E92C0E /* AuthViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthViewModel.swift; sourceTree = "<group>"; };
@@ -64,6 +78,8 @@
 		E53D9F41A54091A115E3B0A8 /* GroupsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupsViewModel.swift; sourceTree = "<group>"; };
 		F1F5B94E4EF84E23FD54D37E /* IBMPlexMono-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexMono-Medium.ttf"; sourceTree = "<group>"; };
 		F2CCAA9C0A6516E38BED3E45 /* OFL-SpaceGrotesk.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "OFL-SpaceGrotesk.txt"; sourceTree = "<group>"; };
+		F4D28E354BBD69412F826668 /* PlanMapView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PlanMapView.swift; sourceTree = "<group>"; };
+		FC542D9DF12EBAEB1E7B529F /* ConnectorCatalogView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConnectorCatalogView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -94,6 +110,8 @@
 				888771CFF161F21E30DBD5E2 /* MessageBubble.swift */,
 				4692147728B75358956CD09F /* RootView.swift */,
 				3E2B5CF987B8724D6935C39D /* ThreadView.swift */,
+				B28FCDC09E1DA098F9C6F9F6 /* Integrations */,
+				F6D40F26FA60736968BFDF63 /* Map */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -157,10 +175,23 @@
 			path = Resources;
 			sourceTree = "<group>";
 		};
+		B28FCDC09E1DA098F9C6F9F6 /* Integrations */ = {
+			isa = PBXGroup;
+			children = (
+				0386FD3EC7A6AE9ED881A657 /* IntegrationResultCard.swift */,
+				FC542D9DF12EBAEB1E7B529F /* ConnectorCatalogView.swift */,
+				80DEE2235D528E6DD231F44D /* ConnectorDetailView.swift */,
+				A6A20B231622340109AC439D /* ExternalActionApprovalSheet.swift */,
+			);
+			name = Integrations;
+			path = Integrations;
+			sourceTree = "<group>";
+		};
 		C934C96287F8B9A74E1536E7 /* Models */ = {
 			isa = PBXGroup;
 			children = (
 				8FEA32B7BED297B270C140E9 /* Models.swift */,
+				2CA163790C3704EF6BDEAAE2 /* IntegrationModels.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -173,6 +204,17 @@
 				E53D9F41A54091A115E3B0A8 /* GroupsViewModel.swift */,
 			);
 			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		F6D40F26FA60736968BFDF63 /* Map */ = {
+			isa = PBXGroup;
+			children = (
+				A98C80D89F7F06640CC767A4 /* PlanMapViewModel.swift */,
+				479B55B48F75B6565201481A /* TravelPreferenceView.swift */,
+				F4D28E354BBD69412F826668 /* PlanMapView.swift */,
+			);
+			name = Map;
+			path = Map;
 			sourceTree = "<group>";
 		};
 		FF691D328A52F2850E9C5D68 /* Fonts */ = {
@@ -204,8 +246,6 @@
 			dependencies = (
 			);
 			name = Plot;
-			packageProductDependencies = (
-			);
 			productName = Plot;
 			productReference = AA05BA05D44FBD0C6F809397 /* Plot.app */;
 			productType = "com.apple.product-type.application";
@@ -284,6 +324,14 @@
 				99A962FD96598B375A0A3A24 /* SocketClient.swift in Sources */,
 				FAB064BFDDB8E8CCF65B8B0D /* Theme.swift in Sources */,
 				FD05CF395A9E9BBC9E891176 /* ThreadView.swift in Sources */,
+				83D85F626B6F5045274D9C81 /* IntegrationModels.swift in Sources */,
+				EA70DB63F2FFBCAE77AFBEEC /* IntegrationResultCard.swift in Sources */,
+				3F36B71641543CC7DA8ABF59 /* ConnectorCatalogView.swift in Sources */,
+				96E0C0001BE4E797111F821E /* ConnectorDetailView.swift in Sources */,
+				DF34ED12FE292805266031A9 /* ExternalActionApprovalSheet.swift in Sources */,
+				24DF5C7D47F6B48AE726AF60 /* PlanMapViewModel.swift in Sources */,
+				A153A42A12AA1DBBAD8845C7 /* TravelPreferenceView.swift in Sources */,
+				AC9133047512701209EB5FE3 /* PlanMapView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

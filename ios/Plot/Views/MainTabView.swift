@@ -34,6 +34,11 @@ struct MainTabView: View {
             if ProcessInfo.processInfo.environment["PLOT_DEV_OPENCREW"] == "1", let first = groups.groups.first {
                 open(first)
             }
+            // dev convenience: land on a specific screen for scripted demos ("connectors" or
+            // "connector:<key>" to deep-link a detail).
+            if ProcessInfo.processInfo.environment["PLOT_DEV_OPEN"]?.hasPrefix("connector") == true {
+                tab = .you
+            }
         }
     }
 
@@ -297,6 +302,7 @@ struct YouView: View {
     @State private var textNonusers = true
     @State private var loaded = false
     @State private var showConnectors = false
+    @State private var connectorGroupId = ""
 
     var body: some View {
         ScrollView {
@@ -342,12 +348,16 @@ struct YouView: View {
                 }
             }.padding(.horizontal, 16).padding(.bottom, 24)
         }
-        .sheet(isPresented: $showConnectors) { NavigationStack { ConnectorCatalogView(groupId: "") } }
+        .sheet(isPresented: $showConnectors) { ConnectorCatalogView(groupId: connectorGroupId) }
         .task {
             guard !loaded else { return }
             loaded = true
             capCents = session.user.defaultSpendCapCents ?? 5000
             if let me = try? await APIClient.shared.me() { capCents = me.defaultSpendCapCents ?? capCents }
+            if let gs = try? await APIClient.shared.myGroups(), let first = gs.first { connectorGroupId = first.id }
+            // dev convenience: auto-open the connectors sheet for scripted demos ("connectors" or
+            // "connector:<key>" to deep-link a connector's detail).
+            if ProcessInfo.processInfo.environment["PLOT_DEV_OPEN"]?.hasPrefix("connector") == true { showConnectors = true }
             if let perms = try? await APIClient.shared.permissions() {
                 func g(_ s: String) -> Bool { perms.first { $0.scope == s }?.granted ?? false }
                 calendar = g("CALENDAR_BUSYFREE"); book = g("SPEND_MONEY"); textNonusers = g("SEND_NONUSER_INVITE")

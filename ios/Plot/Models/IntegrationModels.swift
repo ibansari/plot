@@ -101,4 +101,31 @@ public struct ConnectorEntry: Codable, Identifiable, Hashable {
     public let category: String
     public let trustTier: String
     public let sourceUrl: String?
+    // Present on GET /mcp/connectors (group-scoped); nil on the bare catalog endpoint.
+    public var connectable: Bool?
+    public var connection: ConnectorConnectionState?
 }
+
+// Per-group live connection state for a connector (nil when not connected).
+public struct ConnectorConnectionState: Codable, Hashable {
+    public let connected: Bool
+    public let health: String     // ok | degraded | down | unknown
+    public let coverage: String   // available | degraded | unavailable | needs_connection
+    public let toolCount: Int
+}
+
+// Result of POST /mcp/connectors/:key/connect — the discovered, risk-classified tools.
+public struct ConnectorConnectResult: Codable {
+    public struct Tool: Codable, Hashable {
+        public let name: String
+        public let risk: String
+        public let approvalPolicy: String
+    }
+    public let connectionId: String
+    public let catalogKey: String
+    public let health: String
+    public let coverage: String
+    public let tools: [Tool]
+}
+
+public struct ConnectorDisconnectResult: Codable { public let disconnected: Bool }

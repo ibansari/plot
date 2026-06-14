@@ -31,7 +31,19 @@ export class McpStdioExecutor implements McpExecutor {
   }
 
   register(serverKey: string, cfg: TransportCfg) {
+    // (Re)connecting refreshes the transport — drop any cached session so the next call dials the
+    // server described by the latest config rather than reusing a stale (possibly closed) one.
+    this.evict(serverKey);
     this.configs.set(serverKey, cfg);
+  }
+
+  // Close + forget a server's cached session (used on reconnect and disconnect). Best-effort.
+  evict(serverKey: string) {
+    const c = this.clients.get(serverKey);
+    if (c) {
+      this.clients.delete(serverKey);
+      Promise.resolve(c.close?.()).catch(() => {});
+    }
   }
 
   private async client(serverKey: string): Promise<any | null> {

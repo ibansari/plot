@@ -124,6 +124,18 @@ public actor APIClient {
     public func connectorCatalog() async throws -> [ConnectorEntry] {
         try await get("/internal/mcp/catalog")
     }
+    /// Catalog merged with this group's live connection state (connected / health / tools).
+    public func connectors(groupId: String) async throws -> [ConnectorEntry] {
+        try await get("/mcp/connectors?groupId=\(groupId)")
+    }
+    /// Connect a connector for the group: discovers + persists its tools, returns the live state.
+    public func connectConnector(key: String, groupId: String) async throws -> ConnectorConnectResult {
+        try await post("/mcp/connectors/\(key)/connect", body: ["groupId": groupId])
+    }
+    @discardableResult
+    public func disconnectConnector(key: String, groupId: String) async throws -> ConnectorDisconnectResult {
+        try await post("/mcp/connectors/\(key)/disconnect", body: ["groupId": groupId])
+    }
     public func approveExternalAction(approvalId: String) async throws -> EmptyResponse {
         try await post("/mcp/approvals/\(approvalId)/approve", body: [String: String]())
     }
@@ -142,7 +154,7 @@ public actor APIClient {
         try await send(path, method: "DELETE", body: Optional<[String: String]>.none)
     }
     private func send<T: Decodable, B: Encodable>(_ path: String, method: String, body: B?) async throws -> T {
-        var req = URLRequest(url: base.appendingPathComponent(path))
+        var req = URLRequest(url: url(for: path))
         req.httpMethod = method
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if let token { req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
@@ -152,6 +164,15 @@ public actor APIClient {
             throw APIError.http(String(data: data, encoding: .utf8) ?? "request failed")
         }
         return try JSONDecoder().decode(T.self, from: data)
+    }
+
+    // appendingPathComponent percent-encodes "?", so build the URL with a real query when present.
+    private func url(for path: String) -> URL {
+        guard let q = path.firstIndex(of: "?") else { return base.appendingPathComponent(path) }
+        let root = base.appendingPathComponent(String(path[..<q]))
+        var comps = URLComponents(url: root, resolvingAgainstBaseURL: false)!
+        comps.percentEncodedQuery = String(path[path.index(after: q)...])
+        return comps.url!
     }
 }
 
