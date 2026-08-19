@@ -1,308 +1,357 @@
-＜✦＞ PLOT
+<div align="center">
 
-> **Plot** is a group-chat planning agent. Friends talk in a thread; an AI member named **Plot**
-> stays quiet during banter, detects when the group is actually trying to make a plan, gathers
-> availability, proposes a decision card, collects votes (including from people who don't have the
-> app, over SMS/web), and — when a soft deadline passes — locks a concrete plan: **time + place +
-> RSVP + a bring-list**. Every autonomous thing Plot does is written to a reversible audit log.
+# ✦ Plot
 
-This repo is a **runnable end-to-end vertical slice** of the entire stack wired together. One real
-flow runs through every layer; everything outside that flow is scaffolded behind clean interfaces
-(clearly marked, never faked).
+**The group chat that makes plans actually happen.**
+
+Plot is an AI planning agent that lives inside a group thread. It stays quiet during banter,
+notices when the group is genuinely trying to make a plan, gathers availability, proposes a
+decision card, collects votes — including from people who don't have the app — and locks a
+concrete plan: **time + place + RSVP + bring-list**. Every autonomous action is written to a
+reversible audit log.
+
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.6-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![NestJS](https://img.shields.io/badge/NestJS-10-E0234E?logo=nestjs&logoColor=white)](https://nestjs.com/)
+[![Next.js](https://img.shields.io/badge/Next.js-14-000000?logo=nextdotjs&logoColor=white)](https://nextjs.org/)
+[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![LangGraph](https://img.shields.io/badge/LangGraph-agent-1C3C3C)](https://langchain-ai.github.io/langgraph/)
+[![SwiftUI](https://img.shields.io/badge/SwiftUI-iOS%2017+-F05138?logo=swift&logoColor=white)](https://developer.apple.com/xcode/swiftui/)
+[![Postgres](https://img.shields.io/badge/Postgres-16%20+%20pgvector-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+
+</div>
 
 ---
 
-## ⚠️ Assumptions & inputs
+## Table of contents
 
-`spec.md` (the PRD) was delivered as a **0-byte file**, so the data model (§18), plan state machine
-(§10), agent behaviour (§9), and trust model (§13) are **reconstructed from the goal brief** (see
-`docs/PRD.md`). The **HTML mockup was provided** (`plot-mockup (1).html`) and the UI is **mirrored
-from it**.
+- [What Plot does](#what-plot-does)
+- [How the agent thinks](#how-the-agent-thinks)
+- [Architecture](#architecture)
+- [Quick start](#quick-start)
+- [Configuration](#configuration)
+- [Capability status](#capability-status)
+- [Repository layout](#repository-layout)
+- [Testing](#testing)
+- [Documentation](#documentation)
+- [Roadmap](#roadmap)
+- [Contributing](#contributing)
+- [License](#license)
 
-- **Visual language** (mirrored from `plot-mockup (1).html`): dark / premium / minimal-futuristic.
-  Canvas `#0C0E12`, surface `#15181F`, **hairline borders** `rgba(255,255,255,.07)`, **mint** accent
-  `#5FE6C1`, **amber** "needs you" `#F2B25C`, mint-tinted "me" bubble `#15271F`. Type: **Sora**
-  (display), **Onest** (body), **IBM Plex Mono** (metadata). Brand mark is the **✦** sigil in an
-  accent-dim rounded chip. Tokens live in one place per platform
-  (`ios/Plot/DesignSystem/Theme.swift`, `web/styles/theme.css`). The iOS app reproduces the mockup's
-  Chats / Plans / Discover / You tabs, the group thread, the decision card (↑BOOST/↓VETO + crown +
-  no-booking/booking tags), the amber soft-deadline banner, the locked "confirm" card + bring-list,
-  **Plot's Desk** (reversible activity log + over-cap approval), and the **non-user SMS preview**.
-- **The Crew** (per the mockup): **Alex** (you / organizer), **Max**, **Sam**, **Priya** on the app,
-  and **Jordan** as the non-user reached over SMS.
-- **OTP dev code** is `000000` (any phone). **Sign in with Apple** dev mock returns a canned
-  identity. No Stytch keys required.
-- **Claude is the agent's brain** (`agent/plot_agent/brain.py`): the LangGraph graph uses
-  `claude-opus-4-8` with structured outputs (`messages.parse` + Pydantic) for intent, constraint
-  extraction, and option reasoning — no regex/keyword classifier. Requires `ANTHROPIC_API_KEY`; with
-  no key (or on an API error) the brain returns conservative defaults (Plot stays quiet) rather than
-  acting on heuristics. The single SDK call sits behind an injectable seam, so the graph is
-  unit-tested offline with a fake brain.
-- **Soft deadline** for the demo is compressed to **45 seconds** (`PLOT_SOFT_DEADLINE_SECONDS`) so
-  the auto-lock is observable in a sitting; production default would be hours.
-- The non-user "SMS" is **logged to stdout + persisted** and the signed link is served by `/web`.
+---
+
+## What Plot does
+
+| | |
+|---|---|
+| **Reads the room** | A cheap classification gate keeps Plot silent through banter. It speaks only when the thread is actually trying to plan something. |
+| **Gathers real availability** | iOS reads the device's EventKit busy/free (free/busy only — never event titles) and syncs it to the server. |
+| **Researches real options** | Venue search over a seeded local catalog, or live OpenStreetMap Nominatim (no key) with the catalog as a graceful fallback. |
+| **Proposes, doesn't dictate** | A decision card with mixed options, boost/veto voting, and a visible soft deadline. |
+| **Includes non-users** | People without the app get a signed link over email/SMS and can vote and RSVP from a browser. |
+| **Locks the plan** | When the soft deadline passes, a durable workflow auto-locks the winning option — time, place, RSVP, bring-list. |
+| **Books and settles up** | Optional booking (with tap-to-call fallback) and an even split with escrow hold/capture/refund. |
+| **Stays accountable** | Every autonomous action is auditable and reversible from *Plot's Desk*, and gated by per-action permissions plus a spend cap. |
+
+### Trust model
+
+Plot never acts outside the boundaries the group sets. Each capability maps to a permission scope,
+and anything over the spend cap or irreversible escalates to a human approval instead of executing.
+Mutating tools are physically withheld on uninvited (proactive) turns, so Plot can observe without
+being able to act.
+
+---
+
+## How the agent thinks
+
+The message path is an **agentic tool-use loop**, not a fixed pipeline. Claude sees the live thread,
+the group's remembered constraints, and a real toolset, then decides which tools to call and in what
+order.
+
+```
+message:   dispatch → detect-intent → remember ─┬─ stay-quiet          (banter → silence, cheap gate)
+                                                └─ agent loop ─▶ END   (Claude picks tools freely)
+
+deadline:  dispatch → act-or-ask ─┬─ act → settle-up                   (auto-lock, then offer a split)
+                                  └─ human-approval                    (over cap / irreversible)
+```
+
+**Tools available to the loop:** `gather_availability`, `research_places`, `get_plan`,
+`propose_plan`, `post_message` (the only speech channel), and `finish_turn` (explicit stop — the
+default is silence). MCP servers can be connected at runtime to add more; their tools are registered
+through the same trust gate, and any tool marked `mutating` becomes an approval-gated action.
 
 ---
 
 ## Architecture
 
 ```
-┌──────────────┐      REST (OpenAPI)      ┌───────────────────────────────────────────┐
+┌──────────────┐      REST (OpenAPI)      ┌────────────────────────────────────────────┐
 │   iOS app    │ ───────────────────────▶ │              api  (NestJS)                 │
 │  SwiftUI     │ ◀─────────────────────── │  modular monolith + Socket.IO realtime     │
-│  MVVM+Obs.   │   WebSocket (live state) │                                            │
+│  MVVM + Obs. │   WebSocket (live state) │                                            │
 └──────────────┘                          │  chat · plan · money · notifications ·     │
-                                          │  non-user-gateway · identity · integrations│
-┌──────────────┐   signed link / vote     │                                            │
-│ non-user     │ ───────────────────────▶ │  ── Prisma ──▶ Postgres (+pgvector)        │
-│ (web browser)│   /web (Next.js)         │  ── ioredis ─▶ Redis                        │
-└──────────────┘                          └───────┬───────────────────────┬────────────┘
+                                          │  non-user-gateway · identity · recall ·    │
+┌──────────────┐   signed link / vote     │  integrations (places · maps · weather ·   │
+│  non-user    │ ───────────────────────▶ │  calendar · MCP connectors)                │
+│ (web browser)│   /web (Next.js)         │                                            │
+└──────────────┘                          │  ── Prisma ──▶ Postgres (+ pgvector)       │
+                                          │  ── ioredis ─▶ Redis                       │
+                                          └───────┬────────────────────────┬───────────┘
                                                   │ HTTP                   │ Inngest events
                                                   ▼                        ▼
-                                   ┌────────────────────────┐   ┌────────────────────────┐
-                                   │ agent (Python FastAPI) │   │ Inngest (durable wf)    │
-                                   │ LangGraph + Claude      │◀──│ timers, vote-waits,     │
-                                   │ typed tool registry     │   │ soft-deadline auto-lock │
-                                   │ Postgres checkpointer    │   │ CALLS the agent         │
-                                   └────────────────────────┘   └────────────────────────┘
+                                   ┌─────────────────────────┐  ┌─────────────────────────┐
+                                   │ agent (Python FastAPI)  │  │ Inngest (durable wf)    │
+                                   │ LangGraph + Claude      │◀─│ timers, vote-waits,     │
+                                   │ typed tool registry     │  │ soft-deadline auto-lock │
+                                   │ Postgres checkpointer   │  │ calls the agent         │
+                                   └─────────────────────────┘  └─────────────────────────┘
 ```
 
-**Why these boundaries.** The agent is a *separate* service because its lifecycle (LLM calls, graph
-checkpoints) and scaling profile differ from the request/socket API. The durable workflow (Inngest)
-*owns time* — soft deadlines, vote-waits, contingencies — and calls the agent at decision points;
-the agent itself is stateless between graph runs (state lives in the Postgres checkpointer + the
-Prisma source of truth). The API is the single writer to Postgres and the single broadcaster over
-Socket.IO, so every layer sees one consistent plan state.
+**Why these boundaries.**
 
-The flow the agent walks (PRD §9):
+- **The agent is a separate service.** Its lifecycle (LLM calls, graph checkpoints) and scaling
+  profile differ sharply from a request/socket API.
+- **The durable workflow owns time.** Soft deadlines, vote-waits, and contingencies live in Inngest,
+  which calls the agent at decision points. The agent stays stateless between graph runs — state
+  lives in the Postgres checkpointer and the Prisma source of truth.
+- **The API is the single writer.** One writer to Postgres and one broadcaster over Socket.IO means
+  every client sees exactly one consistent plan state.
 
-```
-detect-intent ──▶ stay-quiet                      (banter → say nothing)
-       │
-       ├────────▶ ask                             (ambiguous → one in-thread question)
-       │
-       └────────▶ gather-availability ─▶ research ─▶ propose-decision ─▶ await-votes ─▶ act-or-ask
-                  (EventKit busy/free)  (Places)   (decision card)    (Inngest timer)   │
-                                                                                        ├─ act  → lock plan + audit
-                                                                                        └─ ask  → human-approval
-                                                                                                  (over spend-cap /
-                                                                                                   irreversible)
-```
+### Tech stack
+
+| Layer | Stack |
+|---|---|
+| iOS client | SwiftUI (iOS 17+), MVVM + Observation, EventKit, generated OpenAPI client |
+| Web client | Next.js — signed vote/RSVP pages for non-users |
+| API | NestJS modular monolith, Socket.IO, Prisma, Inngest |
+| Agent | Python 3.11+, FastAPI, LangGraph, Anthropic SDK (tool use + structured outputs), MCP |
+| Data | Postgres 16 + pgvector, Redis |
+| Contract | Hand-authored `openapi/openapi.yaml`, Swift client generated from it |
 
 ---
 
-## Repo tree
+## Quick start
+
+Everything below runs with **zero paid credentials**.
+
+### Prerequisites
+
+- Docker (Postgres, Redis, Inngest, stripe-mock, Mailpit)
+- Node 20+ (22 recommended) with corepack enabled, for pnpm
+- Python 3.11+
+- macOS with Xcode 15+ *(only if you want to run the iOS app)*
+
+### Run the stack
+
+```bash
+corepack enable            # provides pnpm
+cp .env.example .env       # mocks on by default; no keys required
+
+./scripts/dev.sh           # infra up → install → migrate → seed → api + agent + web
+```
+
+<details>
+<summary>Step by step, instead of <code>dev.sh</code></summary>
+
+```bash
+docker compose up -d                                   # Postgres, Redis, Inngest, stripe-mock, Mailpit
+pnpm install
+pnpm --filter @plot/db build
+pnpm --filter @plot/db prisma:migrate
+pnpm --filter @plot/db seed
+pnpm --filter @plot/api dev &                          # :3000 — REST + WebSocket
+pnpm --filter @plot/web dev &                          # :3001 — non-user pages
+(cd agent && uv run uvicorn plot_agent.main:app --port 8000)
+```
+
+</details>
+
+| Service | URL |
+|---|---|
+| API (REST + WebSocket) | http://localhost:3000 |
+| Web (non-user pages) | http://localhost:3001 |
+| Agent | http://localhost:8000 |
+| Inngest dev UI | http://localhost:8288 |
+| Mailpit inbox | http://localhost:8025 |
+
+### See it end to end, without iOS
+
+```bash
+./scripts/demo.sh
+```
+
+The script drives the whole flow from the CLI and prints the chat transcript, Plot staying quiet
+through banter, the decision card, the non-user invite link, the auto-lock after the soft deadline,
+and the audit log plus an undo.
+
+### Run the iOS app
+
+```bash
+cd ios
+brew install xcodegen       # one-time
+xcodegen generate           # → Plot.xcodeproj
+open Plot.xcodeproj         # pick an iOS 17 simulator → Run
+```
+
+See [`ios/README.md`](ios/README.md) for the headless build/install/launch path, and
+[`docs/CLICKPATH.md`](docs/CLICKPATH.md) for a tap-by-tap walkthrough.
+
+---
+
+## Configuration
+
+Every variable is documented in [`.env.example`](.env.example). The defaults run the full stack
+against local servers with no accounts. The provider switches are the interesting part — each one
+selects between a real local implementation and a hosted service:
+
+| Variable | Default | Options |
+|---|---|---|
+| `AUTH_PROVIDER` | `otp` | `otp` (random code, Redis-hashed, 5-min TTL, single-use, rate-limited) · `stytch` · `mock` (fixed `000000`) |
+| `COMMS_PROVIDER` | `smtp` | `smtp` (real SMTP → Mailpit) · `twilio` (cellular SMS) · `mock` |
+| `PAYMENT_PROVIDER` | `stripe` | `stripe` (real Stripe SDK → `stripe-mock`) · `mock` |
+| `PLACES_PROVIDER` | `db` | `osm` (live Nominatim, degrades to catalog — the default when unset) · `db` (seeded catalog) · `google` · `mock` |
+| `CALENDAR_PROVIDER` | `mock` | `mock` · `google` |
+| `BOOKING_PROVIDER` | `mock` | `mock` (books, or degrades to tap-to-call) · `stub` · partner integrations |
+| `PUSH_PROVIDER` | `mock` | `mock` (logs token + payload) · `apns` |
+| `MEDIA_STORE` | `disk` | `disk` · `s3` (R2/S3) |
+| `PLOT_MCP_SERVERS` | *empty* | JSON array of MCP servers whose tools join the agent loop behind the trust gate |
+
+A few tuning knobs worth knowing:
+
+- `PLOT_SOFT_DEADLINE_SECONDS` defaults to **45** so auto-lock is observable in one sitting; a
+  production default would be hours.
+- `ANTHROPIC_API_KEY` enables the Claude brain. Without a key — or on an API error — the agent
+  returns conservative defaults and stays quiet rather than acting on heuristics.
+- `PLOT_DEFAULT_SPEND_CAP_CENTS` sets the default autonomous spend ceiling.
+
+---
+
+## Capability status
+
+### Working with no paid credentials
+
+| Capability | Implementation |
+|---|---|
+| Groups, invites (users and non-users), multi-group chat list | Postgres + Socket.IO |
+| Group chat and realtime updates | `message.created` / `plan.updated` / `audit.created` over Socket.IO |
+| Plan state machine | Enforced server-side, covered by tests |
+| Agent loop (intent → tools → propose → act/ask) | LangGraph + Claude tool use *(requires `ANTHROPIC_API_KEY`)* |
+| Decision cards, boost/veto voting | End to end across iOS and web |
+| Non-user vote / RSVP | Signed links served by the Next.js app |
+| Soft-deadline auto-lock | Inngest durable workflow |
+| Audit log + undo (compensating actions) | Every autonomous action is reversible |
+| Permissions + spend-cap gate, over-cap approval | Persisted per user, enforced before every tool call |
+| Phone-OTP auth | Random code, Redis-hashed, TTL, single-use, rate-limited |
+| Payments — even split, escrow hold/capture/refund | Official Stripe Node SDK against Stripe's `stripe-mock` |
+| Comms delivery (OTP + invites) | Real SMTP to Mailpit |
+| Places search | Seeded Postgres catalog by default; `PLACES_PROVIDER=osm` fetches live OpenStreetMap Nominatim results and falls back to the catalog |
+| Preference recall | pgvector cosine over a local feature-hashing embedding |
+| Calendar busy/free | iOS EventKit → `POST /me/availability` |
+| Booking | Books with confirmation, or degrades to tap-to-call; `CANCEL_BOOKING` undo |
+| Contingencies | Set at propose time, shown on Plot's Desk, switch-to-backup is enactable |
+| Media storage | Local disk |
+
+### Requires an account or business approval
+
+Each of these is a real interface with a working local stand-in — going live is credentials plus one
+environment flip.
+
+| Capability | Why it's gated | Flip to real |
+|---|---|---|
+| Cellular SMS | Twilio number (paid) | `TWILIO_*` + `COMMS_PROVIDER=twilio` |
+| Live Stripe | A Stripe account | `STRIPE_SECRET_KEY` + clear `STRIPE_API_BASE` |
+| APNs background push | Apple Developer key | `APNS_*` + `PUSH_PROVIDER=apns` |
+| Hosted / Apple login | Stytch or Apple Developer | `STYTCH_*` + `AUTH_PROVIDER=stytch` |
+| Google Places | Places billing | `PLACES_PROVIDER=google` + key |
+| Booking partners | OpenTable / Resy / DICE B2B access | Implement `BookingProvider` + `BOOKING_PROVIDER=…` |
+| Claude brain | `ANTHROPIC_API_KEY` | Set the key |
+
+---
+
+## Repository layout
 
 ```
 plot/
-├── README.md                     ← you are here
-├── docker-compose.yml            ← Postgres + Redis + Inngest dev server
-├── .env.example                  ← EVERY env var, documented
-├── package.json                  ← pnpm workspace root
-├── pnpm-workspace.yaml
-├── turbo.json                    ← Turborepo pipeline
-├── docs/
-│   ├── PRD.md                    ← reconstructed PRD (§9 §10 §13 §18)
-│   └── CLICKPATH.md              ← exact steps to watch the slice
-├── db/                           ← Prisma: the source of truth (all of §18)
-│   ├── package.json
-│   ├── prisma/schema.prisma
-│   ├── prisma/seed.ts            ← "The Crew" — 5 members incl. 1 non-user
-│   └── src/client.ts
-├── openapi/
-│   ├── openapi.yaml              ← REST contract (hand-authored, source of truth)
-│   ├── generate-swift.sh         ← swift-openapi-generator invocation
-│   └── README.md
-├── api/                          ← NestJS modular monolith
-│   ├── package.json · tsconfig.json · nest-cli.json
+├── api/                    NestJS modular monolith
 │   └── src/
-│       ├── main.ts · app.module.ts
-│       ├── common/               ← prisma, redis, audit, auth guard, ws gateway
-│       ├── identity/             ← AuthProvider iface + Stytch + dev mock; /me (availability, devices, permissions, cap)
-│       ├── groups/               ← create group, invite members/non-users, my-groups list
-│       ├── chat/                 ← threads, messages, agent trigger
-│       ├── plan/                 ← §10 state machine, votes, lock
-│       ├── money/                ← Stripe Connect iface + mock (split/escrow)
-│       ├── notifications/        ← APNs iface + dev log impl
-│       ├── non-user-gateway/     ← signed links, non-user vote reconcile
-│       ├── integrations/         ← Calendar + Places connectors (mock + iface)
-│       └── inngest/              ← durable functions (soft-deadline auto-lock)
-├── agent/                        ← Python FastAPI + LangGraph
-│   ├── pyproject.toml · README.md
+│       ├── chat/           threads, messages, agent trigger
+│       ├── plan/           plan state machine, votes, lock, booking, contingencies
+│       ├── groups/         group creation, member + non-user invites
+│       ├── identity/       auth providers, /me (availability, devices, permissions, spend cap)
+│       ├── money/          split + escrow (Stripe SDK / mock)
+│       ├── non-user-gateway/  signed links, non-user vote reconciliation
+│       ├── integrations/   places, maps, weather, calendar, MCP connectors
+│       ├── recall/         pgvector preference memory
+│       ├── notifications/  push + comms providers
+│       └── inngest/        durable functions (soft-deadline auto-lock)
+├── agent/                  Python FastAPI + LangGraph
 │   └── plot_agent/
-│       ├── main.py               ← FastAPI app
-│       ├── graph.py              ← explicit LangGraph state machine
-│       ├── nodes.py              ← detect-intent, gather, research, propose, act-or-ask
-│       ├── tools.py              ← typed tool registry (permission+cap BEFORE, audit AFTER)
-│       ├── brain.py              ← Claude (claude-opus-4-8) structured-output reasoning brain
-│       ├── constraints.py        ← constraint-memory model + expiry
-│       └── api_client.py         ← talks back to NestJS
-├── web/                          ← Next.js — signed non-user vote/RSVP pages
-│   ├── package.json · next.config.mjs
-│   ├── app/v/[token]/page.tsx    ← the vote page a non-user opens
-│   └── styles/theme.css
-├── ios/                          ← Xcode/SPM SwiftUI app
-│   ├── Package.swift
-│   ├── README.md
-│   └── Plot/
-│       ├── PlotApp.swift
-│       ├── DesignSystem/Theme.swift
-│       ├── Networking/{APIClient,SocketClient}.swift
-│       ├── Calendar/EventKitService.swift
-│       ├── Auth/SignInWithApple.swift
-│       ├── Models/*.swift
-│       ├── ViewModels/*.swift
-│       └── Views/*.swift
-└── scripts/
-    ├── dev.sh                    ← one command: infra up, migrate, seed, all services
-    └── demo.sh                   ← drives the slice end-to-end from the CLI (no iOS needed)
+│       ├── graph.py        explicit state machine
+│       ├── loop.py         Claude tool-use agent loop
+│       ├── tools.py        typed tool registry (permission + cap BEFORE, audit AFTER)
+│       ├── brain.py        structured-output reasoning calls
+│       └── constraints.py  constraint memory + expiry
+├── ios/                    SwiftUI app (xcodegen project spec + SPM)
+├── web/                    Next.js — signed non-user vote/RSVP pages
+├── db/                     Prisma schema, migrations, seed
+├── openapi/                hand-authored REST contract + Swift client generation
+├── docs/                   PRD, click-path walkthrough, design specs
+├── scripts/                dev.sh (run everything) · demo.sh (drive the flow)
+└── docker-compose.yml      Postgres + Redis + Inngest + stripe-mock + Mailpit
 ```
 
 ---
 
-## Local run sequence (zero real keys)
+## Testing
 
 ```bash
-# 0. prerequisites: Docker, Node 22 + corepack (pnpm), Python 3.11+. On macOS for iOS: Xcode 15+.
-corepack enable                       # provides pnpm
-cp .env.example .env                  # all mocks on by default
-
-# 1. one command brings up infra, migrates, seeds, and starts api + agent + web + inngest
-./scripts/dev.sh
-#    (or step by step:)
-#    docker compose up -d             # Postgres, Redis, Inngest
-#    pnpm install
-#    pnpm --filter @plot/db prisma:migrate && pnpm --filter @plot/db seed
-#    pnpm --filter @plot/api dev   &   # :3000 REST + :3000 ws
-#    pnpm --filter @plot/web dev   &   # :3001 non-user pages
-#    (cd agent && uv run uvicorn plot_agent.main:app --port 8000)
-
-# 2. watch the slice with NO iOS at all (pure backend proof):
-./scripts/demo.sh
-#    → prints the chat transcript, Plot staying quiet, the decision card,
-#      the non-user "SMS" link, the auto-lock after the soft deadline, and the audit log + an undo.
-
-# 3. or run the iOS app on a simulator (verified on Xcode 26 / iPhone 17):
-cd ios && xcodegen generate && open Plot.xcodeproj   # pick an iOS 17 sim → Run
-#   (headless build+install+launch + the dev auto-drive hooks: see ios/README.md)
+pnpm --filter @plot/api test     # plan state machine, audit + undo, money split,
+                                 # non-user reconcile, MCP gateway, booking, recall
+cd agent && uv run pytest        # routing, agent loop, brain, constraints, settle-up
 ```
 
-See **`docs/CLICKPATH.md`** for the exact tap-by-tap path through the app.
+Suites live in [`api/test/`](api/test) and [`agent/tests/`](agent/tests).
 
 ---
 
-## REAL vs MOCKED
+## Documentation
 
-| Capability | In this slice | Behind the interface (`//TODO: REAL CREDENTIAL`) |
-|---|---|---|
-| **Create group + invite members** (incl. non-user by phone) | **REAL** (`groups` module; in-app from iOS) | — |
-| **Live Chats list / multi-group** | **REAL** (`GET /me/groups`; iOS is fully data-driven) | — |
-| Group chat + messages | **REAL** (Postgres, Socket.IO) | — |
-| Plan state machine §10 | **REAL** (enforced in `plan.service.ts` + tests) | — |
-| Agent graph §9 (intent → … → act/ask) | **REAL** LangGraph; Claude (`claude-opus-4-8`) brain (`brain.py`) — requires key | tune prompts/model in `brain.py` |
-| Decision card w/ mixed options | **REAL** | — |
-| Voting (app users) | **REAL** | — |
-| **Non-user vote via SMS/web** | **REAL via mock** (SMS logged, link served by `/web`) | `TwilioComms` → real Twilio |
-| Soft-deadline auto-lock timer | **REAL** (Inngest local) | — |
-| Audit log + Undo (compensating action) | **REAL** | — |
-| Spend-cap gate + over-cap human approval | **REAL** | — |
-| Calendar busy/free | **REAL** — iOS EventKit reads device free/busy → `POST /me/availability`; server `MockCalendarProvider` serves it | Google → `CalendarProvider` |
-| Device push registration | **REAL** (`POST /me/devices`; iOS registers on launch) | real APNs token → `ApnsProvider` |
-| Trust-model settings (permissions + spend cap) | **REAL** (`/me/permissions`, `/me/spend-cap`; persisted, You tab) | — |
-| Places options | **REAL** — `DbPlacesProvider` searches a seeded Postgres venue catalog by tag/name relevance (no key) | live fetch → `GooglePlacesProvider` |
-| Agent preference memory (recall) | **REAL** — pgvector cosine over a local feature-hashing embedding (no external embeddings API); remembers choices on lock, annotates future proposals | swap in a hosted embedding model |
-| Auth (phone-OTP) | **REAL** — random 6-digit code, hashed in Redis w/ 5-min TTL, single-use, rate-limited, delivered over real comms (`OtpAuthProvider`, `AUTH_PROVIDER=otp`) | hosted/Apple login → `StytchAuthProvider` |
-| Payments — **even split + escrow hold/capture/refund** | **REAL** — the official **Stripe Node SDK** makes real PaymentIntent calls (manual-capture escrow) against Stripe's **`stripe-mock`** server (`PAYMENT_PROVIDER=stripe`, no paid key); split card, pay-share→capture, `REFUND_SPLIT` undo | drop a live `STRIPE_SECRET_KEY` + clear `STRIPE_API_BASE` |
-| Comms delivery (non-user invites, OTP) | **REAL** — `SmtpComms` sends real email over **SMTP** to Mailpit (`COMMS_PROVIDER=smtp`); viewable at `:8025` | cellular SMS → Twilio (`COMMS_PROVIDER=twilio`) |
-| Push notifications | **REAL dev mock** (logs token+payload) | `ApnsProvider` |
-| Media storage | **REAL local-disk** impl | `S3MediaStore` (R2/S3) |
-| **Booking** | **REAL** — `MockBookingProvider` books (confirmation + spend) or **degrades to tap-to-call/deep-link**; `LOCKED→BOOKED`; `AGENT_BOOKED` audit + `CANCEL_BOOKING` undo; "Book it" on the card | `BookingProvider` (OpenTable/Resy/DICE) |
-| **Self-enforcing contingencies** | **REAL** — Plot sets them at propose; shown on Plot's Desk; switch-to-backup is **enactable** (`RESTORE_LOCKED` undo) | autonomous enactment on real signals |
-| Surprise mode / private budget cap | **REAL** (never broadcast; enforced server-side) | — |
-
-### Now real with NO paid credential (run `docker compose up`)
-
-Using official local servers + self-hosted logic, these are no longer stubbed at all:
-
-| Capability | Real implementation (zero keys) |
+| Document | Contents |
 |---|---|
-| **Payments / escrow** | Official **Stripe Node SDK** → Stripe's **`stripe-mock`** server (real PaymentIntents, e.g. `pi_…`) |
-| **Comms delivery** (OTP + invites) | `SmtpComms` → real **SMTP** to **Mailpit** (inbox at `:8025`) |
-| **Phone-OTP auth** | random code, **Redis** hashed + TTL + single-use + rate-limited (`OtpAuthProvider`) |
-| **Places search** | `DbPlacesProvider` — real tag/name query over a seeded Postgres catalog |
-| **Preference recall** | real **pgvector** cosine over a local feature-hashing embedding |
-| **Realtime/in-app push** | live `message.created` / `plan.updated` / `audit.created` over **Socket.IO** |
-| **Calendar busy/free** | iOS **EventKit** → `POST /me/availability` (real device data) |
-| **Media** | real local-disk store |
-
-### The true floor — needs a paid account / business approval
-
-Only these remain stubbed, because the third-party itself requires credentials I can't self-issue.
-Each is a real interface with a working stand-in; going live is keys + one env flip:
-
-| Still stubbed | Why | Flip to real |
-|---|---|---|
-| **Cellular SMS** (SMTP delivery is already real) | Twilio number (paid) | `TWILIO_*` + `COMMS_PROVIDER=twilio` |
-| **Live Stripe** (SDK + escrow already real vs `stripe-mock`) | a Stripe account | live `STRIPE_SECRET_KEY` + clear `STRIPE_API_BASE` |
-| **APNs background push** (in-app realtime is already real) | Apple Developer key | `APNS_*` + `PUSH_PROVIDER=apns` |
-| **Apple / hosted login** (phone-OTP is already real) | Stytch / Apple Developer | `STYTCH_*` + `AUTH_PROVIDER=stytch` |
-| **Live places fetch** (DB catalog already real) | Google Places billing | `PLACES_PROVIDER=google` + key |
-| **Booking partner** (confirm/undo + tap-to-call already real) | OpenTable/Resy/DICE B2B access | implement `BookingProvider` + `BOOKING_PROVIDER=…` |
-| **Claude brain** (real Claude when keyed; safe "stay quiet" defaults otherwise) | `ANTHROPIC_API_KEY` (paid) | set the key |
-
-See the credential shopping list in the project notes for exactly what to obtain for each.
+| [`docs/PRD.md`](docs/PRD.md) | Product requirements: data model, plan state machine, agent behaviour, trust model |
+| [`docs/CLICKPATH.md`](docs/CLICKPATH.md) | Exact tap-by-tap path through the app |
+| [`docs/superpowers/specs/`](docs/superpowers/specs) | Design specs for MCP-first integrations and in-app connections |
+| [`openapi/openapi.yaml`](openapi/openapi.yaml) | REST contract (source of truth for the Swift client) |
+| [`agent/README.md`](agent/README.md) | Agent graph, tool registry, and trust gate in depth |
+| [`ios/README.md`](ios/README.md) | iOS build, simulator, and headless run instructions |
 
 ---
 
-## Real features (the app is usable without the seed/demo)
+## Roadmap
 
-The iOS app is **fully data-driven** — nothing is hardcoded. A brand-new user (any phone, OTP
-`000000`) can:
-- **Create a group** and **invite members** — real users by phone, or **non-users by phone** who
-  then vote/RSVP/pay over SMS (`POST /groups`, `POST /groups/:id/members`).
-- See their **live Chats list** across all groups with last message + plan state (`GET /me/groups`).
-- Open any group thread; Plot reads the **device's real EventKit busy/free** (synced via
-  `POST /me/availability` — busy/free only, no titles), proposes, and runs the §10 flow.
-- Manage the **trust model in the You tab** — per-action permissions and the spend cap persist
-  server-side (`/me/permissions`, `/me/spend-cap`).
-- **Book** a locked plan (organizer tap or, with `BOOK_VENUE` + within cap, Plot) → `BOOKED` +
-  confirmation, or a **tap-to-call** fallback; **undo** cancels it (`POST /plans/:id/book`).
-- **Settle up** — Plot sets up an even split (needs `SPEND_MONEY`, else it asks in-thread); members
-  **pay their share** (`/splits/:id/pay`) and the escrow captures once everyone's in; **undo** refunds.
-- See & **enact contingencies** on Plot's Desk (`POST /plans/:id/contingencies/:idx/enact`).
-- Register for push (`POST /me/devices`).
-
-`db/prisma/seed.ts` now only provides a convenient starting account ("The Crew"); the app no longer
-depends on it. (These `groups`/`me` endpoints extend the hand-authored `openapi/openapi.yaml`, which
-still covers the original slice.) `scripts/demo.ts` remains as an end-to-end test, not a runtime dep.
+- **Cellular SMS** — implement `TwilioComms` behind the existing `Comms` interface.
+- **Google Calendar busy/free** — server-side `CalendarProvider` alongside the iOS EventKit path.
+- **Real booking partners** — implement `BookingProvider`; booking is additive to a locked plan.
+- **Live Stripe Connect** — the split/escrow state machine is already exercised against `stripe-mock`.
+- **Hosted auth** — `StytchAuthProvider` behind the unchanged `AuthProvider` interface.
+- **Agent observability** — streaming responses and per-turn cost accounting around the Claude loop.
+- **Sharper recall** — swap the local feature-hashing embedding for a hosted embedding model.
 
 ---
 
-## NEXT TO BUILD (prioritized, mapped to plug-in points)
+## Contributing
 
-1. **Real Twilio comms** → implement `TwilioComms` in `api/src/notifications/comms.twilio.ts`
-   (interface `Comms` already consumed by `non-user-gateway`). Flip `COMMS_PROVIDER=twilio`.
-2. **Real calendar busy/free** → iOS already reads EventKit; server `GoogleCalendarProvider`
-   implements `CalendarProvider` (`api/src/integrations/calendar/`). Flip `CALENDAR_PROVIDER`.
-3. **Booking provider** → implement `BookingProvider` (`api/src/plan/booking/`) — the plan already
-   locks without it; booking is an *additive* step that attaches a confirmation to a locked plan.
-4. **Stripe Connect** → implement `StripeConnectProvider` (`money` module); mock already models
-   split + escrow hold/capture/refund so the money state machine is exercised today.
-5. **Real Stytch auth** → implement `StytchAuthProvider` (`identity`); the `AuthProvider` interface
-   and JWT session issuance are unchanged.
-6. **Claude in prod** → set `ANTHROPIC_API_KEY`; `agent/plot_agent/brain.py` already drives every
-   decision via `claude-opus-4-8` structured outputs. Add streaming + cost accounting around it.
-7. ~~**pgvector recall**~~ — **DONE**: real pgvector cosine over a local embedding; Plot remembers
-   choices on lock and annotates future proposals (`api/src/recall/`). Next: swap the local
-   feature-hashing embedding for a hosted embedding model for sharper relevance.
+Issues and pull requests are welcome. Before opening a PR:
+
+1. Run the test suites above and make sure they pass.
+2. Keep provider integrations behind their existing interfaces — new capabilities should be a new
+   implementation plus an environment switch, not a change to call sites.
+3. Any new autonomous action needs a permission scope, a spend-cap check, and a compensating undo.
+4. Update [`openapi/openapi.yaml`](openapi/openapi.yaml) when you change the REST surface.
 
 ---
 
-## Tests (the slice)
+## License
 
-```bash
-pnpm --filter @plot/api test     # plan state-machine transitions; audit + undo; non-user reconcile
-cd agent && uv run pytest        # agent act / stay-quiet / ask routing
-```
-
-See `api/test/*.spec.ts` and `agent/tests/*.py`.
+No license file is currently included, so all rights are reserved by default. If you'd like to use
+this code, please open an issue to discuss it.
